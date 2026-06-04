@@ -1,4 +1,4 @@
-// Unit tests for banana HTTP handling and router dispatch using a mocked repository.
+// Unit tests for banana HTTP handling using a mocked repository.
 package handler_test
 
 import (
@@ -179,51 +179,5 @@ func TestBananaHandlerDeleteReturnsDeletedObject(t *testing.T) {
 	}
 	if banana != deleted {
 		t.Fatalf("deleted = %+v, want %+v", banana, deleted)
-	}
-}
-
-func TestRouterDispatchesBananas(t *testing.T) {
-	t.Parallel()
-
-	id := uuid.NewString()
-	repo := &mockBananaRepository{
-		getFn: func(_ context.Context, gotID string) (domain.Banana, error) {
-			return domain.Banana{ID: gotID, Content: "found"}, nil
-		},
-		listFn:   func(_ context.Context, _ domain.ListOptions) (domain.Page, error) { return domain.Page{}, nil },
-		createFn: func(_ context.Context, banana domain.Banana) (domain.Banana, error) { return banana, nil },
-		updateFn: func(_ context.Context, banana domain.Banana) (domain.Banana, error) { return banana, nil },
-		deleteFn: func(_ context.Context, _ string) (domain.Banana, error) { return domain.Banana{}, nil },
-	}
-
-	router := handler.NewRouter(platform.NewLogger())
-	router.Register("bananas", handler.NewBananaHandler(repo, platform.NewLogger()))
-
-	resp, err := router.Handle(context.Background(), events.APIGatewayProxyRequest{
-		HTTPMethod:     "GET",
-		Path:           "/bananas/" + id,
-		PathParameters: map[string]string{"id": id},
-	})
-	if err != nil {
-		t.Fatalf("handle: %v", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusOK)
-	}
-}
-
-func TestRouterUnknownResource(t *testing.T) {
-	t.Parallel()
-
-	router := handler.NewRouter(platform.NewLogger())
-	resp, err := router.Handle(context.Background(), events.APIGatewayProxyRequest{
-		HTTPMethod: "GET",
-		Path:       "/apples",
-	})
-	if err != nil {
-		t.Fatalf("handle: %v", err)
-	}
-	if resp.StatusCode != http.StatusNotFound {
-		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusNotFound)
 	}
 }

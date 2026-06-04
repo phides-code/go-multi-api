@@ -6,7 +6,7 @@ Parameters:
   AwsCfToken:
     Type: String
     NoEcho: true
-    Description: Token for API auth (e.g. Cloudflare or custom); set via --parameter-overrides AwsCfToken=xxx when deploying
+    Description: Token for API auth; set via --parameter-overrides AwsCfToken=xxx when deploying
 
 Resources:
   AppnameBackend:

@@ -3,6 +3,8 @@ package handler
 
 import (
 	"context"
+	"net/http"
+	"os"
 	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -15,12 +17,18 @@ type ResourceHandler interface {
 
 type Router struct {
 	logger   *platform.Logger
+	cfToken  string
 	handlers map[string]ResourceHandler
 }
 
 func NewRouter(logger *platform.Logger) *Router {
+	return NewRouterWithCFTToken(logger, os.Getenv("AWS_CF_TOKEN"))
+}
+
+func NewRouterWithCFTToken(logger *platform.Logger, cfToken string) *Router {
 	return &Router{
 		logger:   logger,
+		cfToken:  cfToken,
 		handlers: make(map[string]ResourceHandler),
 	}
 }
@@ -30,6 +38,10 @@ func (r *Router) Register(prefix string, handler ResourceHandler) {
 }
 
 func (r *Router) Handle(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	if req.HTTPMethod != http.MethodOptions && !platform.ValidCFTToken(r.cfToken, req.Headers) {
+		return platform.ErrorResponse(http.StatusUnauthorized, "unauthorized")
+	}
+
 	logger := r.logger.WithRequestID(req.RequestContext.RequestID)
 	logger.InfoContext(ctx, "incoming request",
 		"method", req.HTTPMethod,
