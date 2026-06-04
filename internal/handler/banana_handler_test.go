@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/google/uuid"
@@ -47,6 +48,9 @@ func TestBananaHandlerCreate(t *testing.T) {
 
 	repo := &mockBananaRepository{
 		createFn: func(_ context.Context, banana domain.Banana) (domain.Banana, error) {
+			if banana.CreatedOn == 0 {
+				t.Fatal("expected createdOn to be set on create")
+			}
 			return banana, nil
 		},
 	}
@@ -85,6 +89,13 @@ func TestBananaHandlerCreate(t *testing.T) {
 	}
 	if err := domain.ValidateID(banana.ID); err != nil {
 		t.Fatalf("expected generated uuid: %v", err)
+	}
+	if banana.CreatedOn == 0 {
+		t.Fatal("expected createdOn in response")
+	}
+	now := uint64(time.Now().UnixMilli())
+	if banana.CreatedOn > now || now-banana.CreatedOn > 5000 {
+		t.Fatalf("createdOn = %d, expected within 5s of %d", banana.CreatedOn, now)
 	}
 }
 

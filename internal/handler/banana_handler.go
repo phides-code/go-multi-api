@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/phides-code/go-multi-api/internal/domain"
@@ -80,8 +81,9 @@ func (h *BananaHandler) create(ctx context.Context, body string) (events.APIGate
 	}
 
 	banana := domain.Banana{
-		ID:      domain.NewID(),
-		Content: payload.Content,
+		ID:        domain.NewID(),
+		Content:   payload.Content,
+		CreatedOn: uint64(time.Now().UnixMilli()),
 	}
 
 	created, err := h.repo.Create(ctx, banana)

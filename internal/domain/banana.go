@@ -12,8 +12,9 @@ const (
 )
 
 type Banana struct {
-	ID      string `json:"id" dynamodbav:"id"`
-	Content string `json:"content" dynamodbav:"content"`
+	ID        string `json:"id" dynamodbav:"id"`
+	Content   string `json:"content" dynamodbav:"content"`
+	CreatedOn uint64 `json:"createdOn" dynamodbav:"createdOn"`
 }
 
 type CreateBananaInput struct {
