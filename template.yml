@@ -1,0 +1,110 @@
+# SAM template for API Gateway and the Go Lambda that serves /bananas (and future paths).
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Parameters:
+  AwsCfToken:
+    Type: String
+    NoEcho: true
+    Description: Token for API auth (e.g. Cloudflare or custom); set via --parameter-overrides AwsCfToken=xxx when deploying
+
+Resources:
+  AppnameBackend:
+    Type: AWS::Serverless::Api
+    Description: "Serverless API for CRUD operations"
+    Properties:
+      Name: "appname-backend"
+      StageName: Prod
+      Auth:
+      Cors:
+        AllowMethods: "'OPTIONS, POST, GET, PUT, DELETE'"
+        AllowHeaders: "'Content-Type, X-CF-Token'"
+        # AllowOrigin: "'http://localhost:5173'" 
+        AllowOrigin: "'FRONTEND_URL'" 
+
+      # Logging settings
+      MethodSettings:
+        - LoggingLevel: INFO
+          ResourcePath: "/*"
+          HttpMethod: "*"
+          MetricsEnabled: true
+          DataTraceEnabled: true
+
+  AppnameBackendFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Timeout: 10
+      Handler: bootstrap
+      Runtime: provided.al2023
+      MemorySize: 512
+      Environment:
+        Variables:
+          AWS_CF_TOKEN: !Ref AwsCfToken  # comes from --parameter-overrides
+      Policies:
+        - AWSLambdaExecute
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AppnameBananasTable
+      Events:
+        BananasOptions:
+          Type: Api
+          Properties:
+            Path: /bananas
+            Method: OPTIONS
+            RestApiId: !Ref AppnameBackend
+        BananasOptionsId:
+          Type: Api
+          Properties:
+            Path: /bananas/{id}
+            Method: OPTIONS
+            RestApiId: !Ref AppnameBackend
+        GetBanana:
+          Type: Api
+          Properties:
+            Path: /bananas/{id}
+            Method: GET
+            RestApiId: !Ref AppnameBackend
+            
+        GetBananas:
+          Type: Api
+          Properties:
+            Path: /bananas
+            Method: GET
+            RestApiId: !Ref AppnameBackend
+            
+        PutBanana:
+          Type: Api
+          Properties:
+            Path: /bananas
+            Method: POST
+            RestApiId: !Ref AppnameBackend
+            
+        DeleteBanana:
+          Type: Api
+          Properties:
+            Path: /bananas/{id}
+            Method: DELETE
+            RestApiId: !Ref AppnameBackend
+            
+        UpdateBanana:
+          Type: Api
+          Properties:
+            Path: /bananas/{id}
+            Method: PUT
+            RestApiId: !Ref AppnameBackend
+            
+    Metadata:
+      BuildMethod: makefile
+
+  AppnameBananasTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: AppnameBananas
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 2
+        WriteCapacityUnits: 2
