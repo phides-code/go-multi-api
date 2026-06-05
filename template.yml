@@ -20,7 +20,7 @@ Resources:
         AllowMethods: "'OPTIONS, POST, GET, PUT, DELETE'"
         AllowHeaders: "'Content-Type, X-CF-Token'"
         # AllowOrigin: "'http://localhost:5173'" 
-        AllowOrigin: "'FRONTEND_URL'" 
+        AllowOrigin: "'https://d2f2ikjrx2cy04.cloudfront.net'" 
 
       # Logging settings
       MethodSettings:

@@ -38,7 +38,9 @@ func (r *Router) Register(prefix string, handler ResourceHandler) {
 }
 
 func (r *Router) Handle(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	if req.HTTPMethod != http.MethodOptions && !platform.ValidCFTToken(r.cfToken, req.Headers) {
+	if req.HTTPMethod != http.MethodOptions &&
+		!platform.LocalMode() &&
+		!platform.ValidCFTToken(r.cfToken, req.Headers) {
 		return platform.ErrorResponse(http.StatusUnauthorized, "unauthorized")
 	}
 
