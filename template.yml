@@ -15,12 +15,11 @@ Resources:
     Properties:
       Name: "appname-backend"
       StageName: Prod
-      Auth:
       Cors:
         AllowMethods: "'OPTIONS, POST, GET, PUT, DELETE'"
         AllowHeaders: "'Content-Type, X-CF-Token'"
         # AllowOrigin: "'http://localhost:5173'" 
-        AllowOrigin: "'https://d2f2ikjrx2cy04.cloudfront.net'" 
+        AllowOrigin: "'FRONTEND_URL'" 
 
       # Logging settings
       MethodSettings:
