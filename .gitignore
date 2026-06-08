@@ -1,3 +1,5 @@
 env.json 
 spec.md
 .aws-sam/
+AGENTS.md
+analysis.md
