@@ -4,6 +4,7 @@ package handler_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"testing"
 	"time"
@@ -39,6 +40,17 @@ func stubRepo() *mockBananaRepository {
 		},
 		deleteFn: func(_ context.Context, id string) (domain.Banana, error) {
 			return domain.Banana{}, nil
+		},
+	}
+}
+
+func listRepo(items []domain.Banana) *mockBananaRepository {
+	return &mockBananaRepository{
+		listFn: func(_ context.Context, opts domain.ListOptions) (domain.Page, error) {
+			if opts.Limit != 50 {
+				return domain.Page{}, errors.New("wrong limit")
+			}
+			return domain.Page{Items: items}, nil
 		},
 	}
 }
@@ -119,48 +131,122 @@ func TestBananaHandlerCreate(t *testing.T) {
 	}
 }
 
-func TestBananaHandlerDeleteReturnsDeletedObject(t *testing.T) {
+func TestBananaHandlerDelete(t *testing.T) {
 	t.Parallel()
 
-	id := uuid.NewString()
-	deleted := domain.Banana{ID: id, Content: "gone"}
-	repo := &mockBananaRepository{
-		deleteFn: func(_ context.Context, gotID string) (domain.Banana, error) {
-			if gotID != id {
-				t.Fatalf("id = %q, want %q", gotID, id)
-			}
-			return deleted, nil
+	validUuid := uuid.NewString()
+	deletedBanana := domain.Banana{
+		ID:      validUuid,
+		Content: "content",
+	}
+
+	tests := []struct {
+		name         string
+		pathID       string
+		wantStatus   int
+		wantBanana   *domain.Banana
+		wantErrorMsg string
+		setupRepo    func(pathID string) *mockBananaRepository
+	}{
+		{
+			name:         "DELETE success",
+			pathID:       validUuid,
+			wantStatus:   http.StatusOK,
+			wantBanana:   &deletedBanana,
+			wantErrorMsg: "",
+			setupRepo: func(pathID string) *mockBananaRepository {
+				return &mockBananaRepository{
+					deleteFn: func(_ context.Context, id string) (domain.Banana, error) {
+						if id != pathID {
+							return domain.Banana{}, domain.ErrNotFound
+						}
+						return deletedBanana, nil
+					},
+				}
+			},
+		},
+		{
+			name:         "DELETE invalid ID",
+			pathID:       "bad id",
+			wantStatus:   http.StatusBadRequest,
+			wantBanana:   nil,
+			wantErrorMsg: "invalid id",
+			setupRepo:    func(pathID string) *mockBananaRepository { return stubRepo() },
+		},
+		{
+			name:         "DELETE ID not found",
+			pathID:       validUuid,
+			wantStatus:   http.StatusNotFound,
+			wantBanana:   nil,
+			wantErrorMsg: "not found",
+			setupRepo: func(pathID string) *mockBananaRepository {
+				return &mockBananaRepository{
+					deleteFn: func(_ context.Context, id string) (domain.Banana, error) {
+						if id == pathID {
+							return domain.Banana{}, domain.ErrNotFound
+						}
+						return deletedBanana, nil
+					},
+				}
+			},
 		},
 	}
-	h := handler.NewBananaHandler(repo, platform.NewLogger())
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	resp, err := h.Handle(context.Background(), events.APIGatewayProxyRequest{
-		HTTPMethod:     "DELETE",
-		PathParameters: map[string]string{"id": id},
-	})
-	if err != nil {
-		t.Fatalf("handle: %v", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusOK)
-	}
+			h := handler.NewBananaHandler(tt.setupRepo(tt.pathID), platform.NewLogger())
 
-	var envelope platform.APIResponse
-	if err := json.Unmarshal([]byte(resp.Body), &envelope); err != nil {
-		t.Fatalf("unmarshal body: %v", err)
-	}
+			req := events.APIGatewayProxyRequest{
+				HTTPMethod: http.MethodDelete,
+			}
 
-	data, err := json.Marshal(envelope.Data)
-	if err != nil {
-		t.Fatalf("marshal data: %v", err)
-	}
+			if tt.pathID != "" {
+				req.PathParameters = map[string]string{"id": tt.pathID}
+			}
 
-	var banana domain.Banana
-	if err := json.Unmarshal(data, &banana); err != nil {
-		t.Fatalf("unmarshal banana: %v", err)
-	}
-	if banana != deleted {
-		t.Fatalf("deleted = %+v, want %+v", banana, deleted)
+			resp, err := h.Handle(context.Background(), req)
+			if err != nil {
+				t.Fatalf("handle: %v", err)
+			}
+
+			if resp.StatusCode != tt.wantStatus {
+				t.Fatalf("status = %d, want %d", resp.StatusCode, tt.wantStatus)
+			}
+
+			var envelope platform.APIResponse
+			if err := json.Unmarshal([]byte(resp.Body), &envelope); err != nil {
+				t.Fatalf("unmarshal body: %v", err)
+			}
+
+			if tt.wantErrorMsg != "" {
+				if envelope.Data != nil {
+					t.Fatalf("expected nil data, got %v", envelope.Data)
+				}
+
+				if envelope.Error == nil || *envelope.Error != tt.wantErrorMsg {
+					t.Fatalf("error = %v, want %q", envelope.Error, tt.wantErrorMsg)
+				}
+			} else {
+				if envelope.Error != nil {
+					t.Fatalf("unexpected error: %s", *envelope.Error)
+				}
+
+				data, err := json.Marshal(envelope.Data)
+				if err != nil {
+					t.Fatalf("marshal data: %v", err)
+				}
+
+				var banana domain.Banana
+				if err := json.Unmarshal(data, &banana); err != nil {
+					t.Fatalf("unmarshal banana: %v", err)
+				}
+
+				if banana != *tt.wantBanana {
+					t.Fatalf("banana = %+v, want %+v", banana, tt.wantBanana)
+				}
+			}
+		})
 	}
 }
 
@@ -348,6 +434,86 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 
 			if envelope.Error == nil || *envelope.Error != tt.wantErrorMsg {
 				t.Fatalf("error = %v, want %q", envelope.Error, tt.wantErrorMsg)
+			}
+		})
+	}
+}
+
+func TestBananaHandlerList(t *testing.T) {
+	t.Parallel()
+
+	bananaOne := domain.Banana{ID: uuid.NewString(), Content: "first"}
+	bananaTwo := domain.Banana{ID: uuid.NewString(), Content: "second"}
+	wantItems := []domain.Banana{bananaOne, bananaTwo}
+
+	tests := []struct {
+		name         string
+		wantStatus   int
+		wantItems    []domain.Banana
+		wantErrorMsg string
+	}{
+		{
+			name:         "GET list returns items",
+			wantStatus:   http.StatusOK,
+			wantItems:    wantItems,
+			wantErrorMsg: "",
+		},
+		{
+			name:         "GET list empty",
+			wantStatus:   http.StatusOK,
+			wantItems:    []domain.Banana{},
+			wantErrorMsg: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			h := handler.NewBananaHandler(listRepo(tt.wantItems), platform.NewLogger())
+
+			req := events.APIGatewayProxyRequest{
+				HTTPMethod: http.MethodGet,
+			}
+
+			resp, err := h.Handle(context.Background(), req)
+			if err != nil {
+				t.Fatalf("handle: %v", err)
+			}
+
+			if resp.StatusCode != tt.wantStatus {
+				t.Fatalf("status = %d, want %d", resp.StatusCode, tt.wantStatus)
+			}
+
+			var envelope platform.APIResponse
+			if err := json.Unmarshal([]byte(resp.Body), &envelope); err != nil {
+				t.Fatalf("unmarshal body: %v", err)
+			}
+
+			if tt.wantErrorMsg != "" {
+
+			} else {
+				if envelope.Error != nil {
+					t.Fatalf("unexpected error: %s", *envelope.Error)
+				}
+
+				data, err := json.Marshal(envelope.Data)
+				if err != nil {
+					t.Fatalf("marshal data: %v", err)
+				}
+
+				var items []domain.Banana
+				if err := json.Unmarshal(data, &items); err != nil {
+					t.Fatalf("unmarshal items: %v", err)
+				}
+				if len(items) != len(tt.wantItems) {
+					t.Fatalf("len(items) = %d, want %d", len(items), len(tt.wantItems))
+				}
+				for i := range tt.wantItems {
+					if items[i] != tt.wantItems[i] {
+						t.Fatalf("items[%d] = %+v, want %+v", i, items[i], tt.wantItems[i])
+					}
+				}
 			}
 		})
 	}
