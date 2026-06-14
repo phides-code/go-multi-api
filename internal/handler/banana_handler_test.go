@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -53,6 +54,16 @@ func listRepo(items []domain.Banana) *mockBananaRepository {
 			return domain.Page{Items: items}, nil
 		},
 	}
+}
+
+func updateRepo(wantID string, updated domain.Banana) *mockBananaRepository {
+	return &mockBananaRepository{
+		updateFn: func(_ context.Context, banana domain.Banana) (domain.Banana, error) {
+			if banana.ID != wantID {
+				return domain.Banana{}, domain.ErrNotFound
+			}
+			return updated, nil
+		}}
 }
 
 func (m *mockBananaRepository) Create(ctx context.Context, banana domain.Banana) (domain.Banana, error) {
@@ -310,6 +321,7 @@ func TestBananaHandlerGetByID(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
@@ -513,6 +525,149 @@ func TestBananaHandlerList(t *testing.T) {
 					if items[i] != tt.wantItems[i] {
 						t.Fatalf("items[%d] = %+v, want %+v", i, items[i], tt.wantItems[i])
 					}
+				}
+			}
+		})
+	}
+}
+
+func TestBananaHandlerUpdate(t *testing.T) {
+	t.Parallel()
+
+	validUuid := uuid.NewString()
+	validContent := "valid content"
+	validUpdateBody := fmt.Sprintf(`{"content":%q}`, validContent)
+
+	updatedBanana := domain.Banana{
+		ID:      validUuid,
+		Content: validContent,
+	}
+
+	tests := []struct {
+		name         string
+		pathID       string
+		body         string
+		wantStatus   int
+		wantBanana   *domain.Banana
+		wantErrorMsg string
+		setupRepo    func(pathID string) *mockBananaRepository
+	}{
+		{
+			name:         "PUT success",
+			pathID:       validUuid,
+			body:         validUpdateBody,
+			wantStatus:   http.StatusOK,
+			wantBanana:   &updatedBanana,
+			wantErrorMsg: "",
+			setupRepo: func(pathID string) *mockBananaRepository {
+				return updateRepo(pathID, updatedBanana)
+			},
+		},
+		{
+			name:         "PUT invalid ID",
+			pathID:       "bad id",
+			body:         validUpdateBody,
+			wantStatus:   http.StatusBadRequest,
+			wantBanana:   nil,
+			wantErrorMsg: "invalid id",
+			setupRepo: func(pathID string) *mockBananaRepository {
+				return stubRepo()
+			},
+		},
+		{
+			name:         "PUT invalid JSON",
+			pathID:       validUuid,
+			body:         "not json",
+			wantStatus:   http.StatusBadRequest,
+			wantBanana:   nil,
+			wantErrorMsg: "invalid json",
+			setupRepo: func(pathID string) *mockBananaRepository {
+				return stubRepo()
+			},
+		},
+		{
+			name:         "PUT empty content",
+			pathID:       validUuid,
+			body:         `{"content":""}`,
+			wantStatus:   http.StatusBadRequest,
+			wantBanana:   nil,
+			wantErrorMsg: "invalid content",
+			setupRepo:    func(pathID string) *mockBananaRepository { return stubRepo() },
+		},
+		{
+			name:         "PUT banana not found",
+			pathID:       validUuid,
+			wantStatus:   http.StatusNotFound,
+			body:         validUpdateBody,
+			wantBanana:   nil,
+			wantErrorMsg: "not found",
+			setupRepo: func(pathID string) *mockBananaRepository {
+				return &mockBananaRepository{
+					updateFn: func(_ context.Context, banana domain.Banana) (domain.Banana, error) {
+						if banana.ID == pathID {
+							return domain.Banana{}, domain.ErrNotFound
+						}
+						return updatedBanana, nil
+					},
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			h := handler.NewBananaHandler(tt.setupRepo(tt.pathID), platform.NewLogger())
+
+			req := events.APIGatewayProxyRequest{
+				HTTPMethod: http.MethodPut,
+				Body:       tt.body,
+			}
+
+			if tt.pathID != "" {
+				req.PathParameters = map[string]string{"id": tt.pathID}
+			}
+
+			resp, err := h.Handle(context.Background(), req)
+			if err != nil {
+				t.Fatalf("handle: %v", err)
+			}
+
+			if resp.StatusCode != tt.wantStatus {
+				t.Fatalf("status = %d, want %d", resp.StatusCode, tt.wantStatus)
+			}
+
+			var envelope platform.APIResponse
+			if err := json.Unmarshal([]byte(resp.Body), &envelope); err != nil {
+				t.Fatalf("unmarshal body: %v", err)
+			}
+
+			if tt.wantErrorMsg != "" {
+				if envelope.Data != nil {
+					t.Fatalf("expected nil data, got %v", envelope.Data)
+				}
+
+				if envelope.Error == nil || *envelope.Error != tt.wantErrorMsg {
+					t.Fatalf("error = %v, want %q", envelope.Error, tt.wantErrorMsg)
+				}
+			} else {
+				if envelope.Error != nil {
+					t.Fatalf("unexpected error: %s", *envelope.Error)
+				}
+
+				data, err := json.Marshal(envelope.Data)
+				if err != nil {
+					t.Fatalf("marshal data: %v", err)
+				}
+
+				var banana domain.Banana
+				if err := json.Unmarshal(data, &banana); err != nil {
+					t.Fatalf("unmarshal banana: %v", err)
+				}
+
+				if banana != *tt.wantBanana {
+					t.Fatalf("banana = %+v, want %+v", banana, tt.wantBanana)
 				}
 			}
 		})
