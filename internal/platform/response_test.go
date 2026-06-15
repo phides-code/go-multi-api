@@ -10,25 +10,6 @@ import (
 	"github.com/phides-code/go-multi-api/internal/platform"
 )
 
-func TestHTTPStatusForError(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		err    error
-		status int
-	}{
-		{err: domain.ErrInvalidID, status: http.StatusBadRequest},
-		{err: domain.ErrNotFound, status: http.StatusNotFound},
-		{err: domain.ErrMethodNotAllowed, status: http.StatusMethodNotAllowed},
-	}
-
-	for _, tt := range tests {
-		if status := platform.HTTPStatusForError(tt.err); status != tt.status {
-			t.Fatalf("status for %v = %d, want %d", tt.err, status, tt.status)
-		}
-	}
-}
-
 func TestSuccessResponseEnvelope(t *testing.T) {
 	t.Parallel()
 

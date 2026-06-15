@@ -3,6 +3,7 @@ package platform
 
 import (
 	"errors"
+	"net/http"
 
 	"github.com/phides-code/go-multi-api/internal/domain"
 )
@@ -12,13 +13,13 @@ func HTTPStatusForError(err error) int {
 	case errors.Is(err, domain.ErrInvalidID),
 		errors.Is(err, domain.ErrInvalidContent),
 		errors.Is(err, domain.ErrInvalidJSON):
-		return 400
+		return http.StatusBadRequest
 	case errors.Is(err, domain.ErrNotFound):
-		return 404
+		return http.StatusNotFound
 	case errors.Is(err, domain.ErrMethodNotAllowed):
-		return 405
+		return http.StatusMethodNotAllowed
 	default:
-		return 500
+		return http.StatusInternalServerError
 	}
 }
 

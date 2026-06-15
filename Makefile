@@ -11,7 +11,7 @@ build-AppnameBackendFunction:
 
 .PHONY: test
 test:
-	go test ./...
+	go test ./... -cover
 
 .PHONY: init
 init: build
