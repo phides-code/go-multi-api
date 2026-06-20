@@ -20,10 +20,18 @@ const bananasTableName = "AppnameBananas"
 const defaultListLimit int32 = 50
 
 type BananaRepository struct {
-	client *dynamodb.Client
+	client dynamoAPI
 }
 
-func NewBananaRepository(client *dynamodb.Client) *BananaRepository {
+type dynamoAPI interface {
+	GetItem(ctx context.Context, params *dynamodb.GetItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.GetItemOutput, error)
+	PutItem(ctx context.Context, params *dynamodb.PutItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.PutItemOutput, error)
+	Scan(ctx context.Context, params *dynamodb.ScanInput, optFns ...func(*dynamodb.Options)) (*dynamodb.ScanOutput, error)
+	UpdateItem(ctx context.Context, params *dynamodb.UpdateItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.UpdateItemOutput, error)
+	DeleteItem(ctx context.Context, params *dynamodb.DeleteItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.DeleteItemOutput, error)
+}
+
+func NewBananaRepository(client dynamoAPI) *BananaRepository {
 	return &BananaRepository{client: client}
 }
 
@@ -38,6 +46,7 @@ func (r *BananaRepository) Create(ctx context.Context, banana domain.Banana) (do
 		Item:                item,
 		ConditionExpression: aws.String("attribute_not_exists(id)"),
 	})
+
 	if err != nil {
 		var conditionalCheck *types.ConditionalCheckFailedException
 		if errors.As(err, &conditionalCheck) {
