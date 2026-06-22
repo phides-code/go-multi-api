@@ -12,8 +12,6 @@ import (
 	"github.com/phides-code/go-multi-api/internal/platform"
 )
 
-const defaultListLimit int32 = 50
-
 type BananaHandler struct {
 	repo   domain.BananaRepository
 	logger *platform.Logger
@@ -29,7 +27,7 @@ func (h *BananaHandler) Handle(ctx context.Context, req events.APIGatewayProxyRe
 	switch req.HTTPMethod {
 	case "GET":
 		if id == "" {
-			return h.list(ctx)
+			return h.list(ctx, req)
 		}
 		return h.getByID(ctx, id)
 	case "POST":
@@ -43,15 +41,18 @@ func (h *BananaHandler) Handle(ctx context.Context, req events.APIGatewayProxyRe
 	}
 }
 
-func (h *BananaHandler) list(ctx context.Context) (events.APIGatewayProxyResponse, error) {
+func (h *BananaHandler) list(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	cursor := strings.TrimSpace(req.QueryStringParameters["cursor"])
+
 	page, err := h.repo.List(ctx, domain.ListOptions{
-		Limit: defaultListLimit,
+		Limit:  domain.DefaultListLimit,
+		Cursor: cursor,
 	})
 	if err != nil {
 		return h.errorResponse(ctx, err, "list bananas")
 	}
 
-	return platform.SuccessResponse(200, page.Items)
+	return platform.SuccessResponse(200, page)
 }
 
 func (h *BananaHandler) getByID(ctx context.Context, id string) (events.APIGatewayProxyResponse, error) {

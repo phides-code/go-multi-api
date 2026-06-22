@@ -3,9 +3,11 @@ package domain
 
 import "context"
 
+const DefaultListLimit int32 = 50
+
 type Page struct {
-	Items      []Banana
-	NextCursor string
+	Items      []Banana `json:"items"`
+	NextCursor string   `json:"nextCursor,omitempty"`
 }
 
 type ListOptions struct {

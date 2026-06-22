@@ -17,8 +17,6 @@ import (
 
 const bananasTableName = "AppnameBananas"
 
-const defaultListLimit int32 = 50
-
 type BananaRepository struct {
 	client dynamoAPI
 }
@@ -83,7 +81,7 @@ func (r *BananaRepository) GetByID(ctx context.Context, id string) (domain.Banan
 func (r *BananaRepository) List(ctx context.Context, opts domain.ListOptions) (domain.Page, error) {
 	limit := opts.Limit
 	if limit <= 0 {
-		limit = defaultListLimit
+		limit = domain.DefaultListLimit
 	}
 
 	input := &dynamodb.ScanInput{

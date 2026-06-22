@@ -48,7 +48,7 @@ func stubRepo() *mockBananaRepository {
 func listRepo(items []domain.Banana) *mockBananaRepository {
 	return &mockBananaRepository{
 		listFn: func(_ context.Context, opts domain.ListOptions) (domain.Page, error) {
-			if opts.Limit != 50 {
+			if opts.Limit != domain.DefaultListLimit {
 				return domain.Page{}, errors.New("wrong limit")
 			}
 			return domain.Page{Items: items}, nil
@@ -390,6 +390,7 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 		body         string
 		wantStatus   int
 		wantErrorMsg string
+		setupRepo    func() *mockBananaRepository
 	}{
 		{
 			name:         "POST invalid json",
@@ -457,35 +458,82 @@ func TestBananaHandlerList(t *testing.T) {
 	bananaOne := domain.Banana{ID: uuid.NewString(), Content: "first"}
 	bananaTwo := domain.Banana{ID: uuid.NewString(), Content: "second"}
 	wantItems := []domain.Banana{bananaOne, bananaTwo}
+	nextCursor := "abc123"
+	page2Item := domain.Banana{ID: uuid.NewString(), Content: "page2"}
 
 	tests := []struct {
-		name         string
-		wantStatus   int
-		wantItems    []domain.Banana
-		wantErrorMsg string
+		name           string
+		wantStatus     int
+		wantItems      []domain.Banana
+		wantErrorMsg   string
+		wantNextCursor string
+		setupRepo      func() *mockBananaRepository
+		queryCursor    string
 	}{
 		{
-			name:         "GET list returns items",
-			wantStatus:   http.StatusOK,
-			wantItems:    wantItems,
-			wantErrorMsg: "",
+			name:           "GET list returns items",
+			wantStatus:     http.StatusOK,
+			wantItems:      wantItems,
+			wantErrorMsg:   "",
+			wantNextCursor: "",
+			setupRepo:      func() *mockBananaRepository { return listRepo(wantItems) },
 		},
 		{
-			name:         "GET list empty",
-			wantStatus:   http.StatusOK,
-			wantItems:    []domain.Banana{},
-			wantErrorMsg: "",
+			name:           "GET list empty",
+			wantStatus:     http.StatusOK,
+			wantItems:      []domain.Banana{},
+			wantErrorMsg:   "",
+			wantNextCursor: "",
+			setupRepo:      func() *mockBananaRepository { return listRepo([]domain.Banana{}) },
 		},
-	}
+		{
+			name:           "GET list returns next cursor",
+			wantStatus:     http.StatusOK,
+			wantItems:      wantItems,
+			wantErrorMsg:   "",
+			wantNextCursor: nextCursor,
+			setupRepo: func() *mockBananaRepository {
+				return &mockBananaRepository{
+					listFn: func(_ context.Context, opts domain.ListOptions) (domain.Page, error) {
+						return domain.Page{
+							Items:      wantItems,
+							NextCursor: nextCursor,
+						}, nil
+					},
+				}
+			},
+		},
+		{
+			name:        "GET list passes cursor query param",
+			wantStatus:  http.StatusOK,
+			wantItems:   []domain.Banana{page2Item},
+			queryCursor: nextCursor,
+			setupRepo: func() *mockBananaRepository {
+				return &mockBananaRepository{
+					listFn: func(_ context.Context, opts domain.ListOptions) (domain.Page, error) {
+						if opts.Cursor != nextCursor {
+							return domain.Page{}, errors.New("wrong cursor")
+						}
+						return domain.Page{Items: []domain.Banana{page2Item}}, nil
+					},
+				}
+			},
+		}}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			h := handler.NewBananaHandler(listRepo(tt.wantItems), platform.NewLogger())
+			h := handler.NewBananaHandler(tt.setupRepo(), platform.NewLogger())
 
 			req := events.APIGatewayProxyRequest{
 				HTTPMethod: http.MethodGet,
+			}
+
+			if tt.queryCursor != "" {
+				req.QueryStringParameters = map[string]string{
+					"cursor": tt.queryCursor,
+				}
 			}
 
 			resp, err := h.Handle(context.Background(), req)
@@ -514,17 +562,20 @@ func TestBananaHandlerList(t *testing.T) {
 					t.Fatalf("marshal data: %v", err)
 				}
 
-				var items []domain.Banana
-				if err := json.Unmarshal(data, &items); err != nil {
-					t.Fatalf("unmarshal items: %v", err)
+				var page domain.Page
+				if err := json.Unmarshal(data, &page); err != nil {
+					t.Fatalf("unmarshal page: %v", err)
 				}
-				if len(items) != len(tt.wantItems) {
-					t.Fatalf("len(items) = %d, want %d", len(items), len(tt.wantItems))
+				if len(page.Items) != len(tt.wantItems) {
+					t.Fatalf("len(page.Items) = %d, want %d", len(page.Items), len(tt.wantItems))
 				}
 				for i := range tt.wantItems {
-					if items[i] != tt.wantItems[i] {
-						t.Fatalf("items[%d] = %+v, want %+v", i, items[i], tt.wantItems[i])
+					if page.Items[i] != tt.wantItems[i] {
+						t.Fatalf("items[%d] = %+v, want %+v", i, page.Items[i], tt.wantItems[i])
 					}
+				}
+				if page.NextCursor != tt.wantNextCursor {
+					t.Fatalf("nextCursor = %q, want %q", page.NextCursor, tt.wantNextCursor)
 				}
 			}
 		})

@@ -366,8 +366,8 @@ func TestBananaRepositoryList(t *testing.T) {
 			setupMock: func() *mockDynamoClient {
 				return &mockDynamoClient{
 					scanFn: func(_ context.Context, params *awsdynamodb.ScanInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.ScanOutput, error) {
-						if params.Limit == nil || *params.Limit != 50 {
-							t.Errorf("Limit = %v, want 50", params.Limit)
+						if params.Limit == nil || *params.Limit != domain.DefaultListLimit {
+							t.Errorf("Limit = %v, want %v", params.Limit, domain.DefaultListLimit)
 						}
 						return &awsdynamodb.ScanOutput{Items: scanOutputItems}, nil
 					},

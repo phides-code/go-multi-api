@@ -62,7 +62,7 @@ On success, `error` is null and `data` holds the result. On failure, `data` is n
 
 | Method | Path | Behavior |
 |--------|------|----------|
-| `GET` | `/bananas` | List all bananas (paginated scan, default limit 50) |
+| `GET` | `/bananas` | List bananas (paginated; see below) |
 | `GET` | `/bananas/{id}` | Get one banana by UUID |
 | `POST` | `/bananas` | Create a banana; server generates UUID v4 id |
 | `PUT` | `/bananas/{id}` | Update `content` only; 404 if missing |
@@ -90,6 +90,28 @@ On success, `error` is null and `data` holds the result. On failure, `data` is n
 { "content": "string" }
 ```
 
+**List response** (`GET /bananas`):
+
+```json
+{
+  "data": {
+    "items": [
+      {
+        "id": "uuid",
+        "content": "string",
+        "createdOn": 1717516800000
+      }
+    ],
+    "nextCursor": "opaque-cursor"
+  },
+  "error": null
+}
+```
+
+- Returns up to 50 items per page (`domain.DefaultListLimit`).
+- `nextCursor` is omitted when there is no next page.
+- Pass `?cursor=<nextCursor>` to fetch the next page.
+
 Validation: `content` is required, 1–1000 Unicode characters. Path `{id}` values must be valid UUIDs.
 
 ## Development
@@ -107,10 +129,13 @@ make build
 make local
 ```
 
-Example local request (no auth header — SAM local sets `AWS_SAM_LOCAL`):
+Example local requests (no auth header — SAM local sets `AWS_SAM_LOCAL`):
 
 ```bash
 curl http://localhost:8000/bananas
+
+# Next page (use nextCursor value from the previous response)
+curl "http://localhost:8000/bananas?cursor=opaque-cursor"
 ```
 
 ## Deploy
@@ -171,6 +196,7 @@ Create `internal/handler/<resource>_handler.go`:
 
 - Struct holding the repository interface and `*platform.Logger`.
 - `Handle(ctx, req)` switches on `req.HTTPMethod` and `req.PathParameters["id"]`.
+- For list endpoints, read pagination from `req.QueryStringParameters` (e.g. `cursor`) and return a page object (`items`, `nextCursor`) in `data`.
 - Parse JSON bodies, call domain validation, call the repository.
 - Return `platform.SuccessResponse` / `platform.ErrorResponse` via a local `errorResponse` helper (see `banana_handler.go`).
 
