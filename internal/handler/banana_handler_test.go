@@ -89,56 +89,100 @@ func (m *mockBananaRepository) Delete(ctx context.Context, id string) (domain.Ba
 func TestBananaHandlerCreate(t *testing.T) {
 	t.Parallel()
 
-	repo := &mockBananaRepository{
-		createFn: func(_ context.Context, banana domain.Banana) (domain.Banana, error) {
-			if banana.CreatedOn == 0 {
-				t.Fatal("expected createdOn to be set on create")
-			}
-			return banana, nil
+	tests := []struct {
+		name         string
+		body         string
+		setupRepo    func() *mockBananaRepository
+		wantStatus   int
+		wantErrorMsg string
+		wantContent  string
+	}{
+		{
+			name: "success",
+			body: `{"content":"ripe"}`,
+			setupRepo: func() *mockBananaRepository {
+				return &mockBananaRepository{
+					createFn: func(_ context.Context, banana domain.Banana) (domain.Banana, error) {
+						return banana, nil
+					},
+				}
+			},
+			wantStatus:  http.StatusCreated,
+			wantContent: "ripe",
+		},
+		{
+			name: "repo failure",
+			body: `{"content":"ripe"}`,
+			setupRepo: func() *mockBananaRepository {
+				return &mockBananaRepository{
+					createFn: func(_ context.Context, _ domain.Banana) (domain.Banana, error) {
+						return domain.Banana{}, errors.New("db down")
+					},
+				}
+			},
+			wantStatus:   http.StatusInternalServerError,
+			wantErrorMsg: "internal server error",
 		},
 	}
-	h := handler.NewBananaHandler(repo, platform.NewLogger())
 
-	resp, err := h.Handle(context.Background(), events.APIGatewayProxyRequest{
-		HTTPMethod: "POST",
-		Body:       `{"content":"ripe"}`,
-	})
-	if err != nil {
-		t.Fatalf("handle: %v", err)
-	}
-	if resp.StatusCode != http.StatusCreated {
-		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusCreated)
-	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	var envelope platform.APIResponse
-	if err := json.Unmarshal([]byte(resp.Body), &envelope); err != nil {
-		t.Fatalf("unmarshal body: %v", err)
-	}
-	if envelope.Error != nil {
-		t.Fatalf("unexpected error: %s", *envelope.Error)
-	}
+			h := handler.NewBananaHandler(tt.setupRepo(), platform.NewLogger())
 
-	data, err := json.Marshal(envelope.Data)
-	if err != nil {
-		t.Fatalf("marshal data: %v", err)
-	}
+			resp, err := h.Handle(context.Background(), events.APIGatewayProxyRequest{
+				HTTPMethod: "POST",
+				Body:       tt.body,
+			})
+			if err != nil {
+				t.Fatalf("handle: %v", err)
+			}
+			if resp.StatusCode != tt.wantStatus {
+				t.Fatalf("status = %d, want %d", resp.StatusCode, tt.wantStatus)
+			}
 
-	var banana domain.Banana
-	if err := json.Unmarshal(data, &banana); err != nil {
-		t.Fatalf("unmarshal banana: %v", err)
-	}
-	if banana.Content != "ripe" {
-		t.Fatalf("content = %q, want %q", banana.Content, "ripe")
-	}
-	if err := domain.ValidateID(banana.ID); err != nil {
-		t.Fatalf("expected generated uuid: %v", err)
-	}
-	if banana.CreatedOn == 0 {
-		t.Fatal("expected createdOn in response")
-	}
-	now := uint64(time.Now().UnixMilli())
-	if banana.CreatedOn > now || now-banana.CreatedOn > 5000 {
-		t.Fatalf("createdOn = %d, expected within 5s of %d", banana.CreatedOn, now)
+			var envelope platform.APIResponse
+			if err := json.Unmarshal([]byte(resp.Body), &envelope); err != nil {
+				t.Fatalf("unmarshal body: %v", err)
+			}
+
+			if tt.wantErrorMsg != "" {
+				if envelope.Data != nil {
+					t.Fatalf("expected nil data, got %v", envelope.Data)
+				}
+				if envelope.Error == nil || *envelope.Error != tt.wantErrorMsg {
+					t.Fatalf("error = %v, want %q", envelope.Error, tt.wantErrorMsg)
+				}
+			} else {
+				if envelope.Error != nil {
+					t.Fatalf("unexpected error: %s", *envelope.Error)
+				}
+
+				data, err := json.Marshal(envelope.Data)
+				if err != nil {
+					t.Fatalf("marshal data: %v", err)
+				}
+
+				var banana domain.Banana
+				if err := json.Unmarshal(data, &banana); err != nil {
+					t.Fatalf("unmarshal banana: %v", err)
+				}
+				if banana.Content != tt.wantContent {
+					t.Fatalf("content = %q, want %q", banana.Content, tt.wantContent)
+				}
+				if err := domain.ValidateID(banana.ID); err != nil {
+					t.Fatalf("expected generated uuid: %v", err)
+				}
+				if banana.CreatedOn == 0 {
+					t.Fatal("expected createdOn in response")
+				}
+				now := uint64(time.Now().UnixMilli())
+				if banana.CreatedOn > now || now-banana.CreatedOn > 5000 {
+					t.Fatalf("createdOn = %d, expected within 5s of %d", banana.CreatedOn, now)
+				}
+			}
+		})
 	}
 }
 
@@ -316,6 +360,20 @@ func TestBananaHandlerGetByID(t *testing.T) {
 							return domain.Banana{}, domain.ErrNotFound
 						}
 						return validBanana, nil
+					},
+				}
+			},
+		},
+		{
+			name:         "GET by ID repo failure",
+			pathID:       validUuid,
+			wantStatus:   http.StatusInternalServerError,
+			wantBanana:   nil,
+			wantErrorMsg: "internal server error",
+			setupRepo: func(pathID string) *mockBananaRepository {
+				return &mockBananaRepository{
+					getFn: func(_ context.Context, _ string) (domain.Banana, error) {
+						return domain.Banana{}, errors.New("db down")
 					},
 				}
 			},
@@ -518,7 +576,20 @@ func TestBananaHandlerList(t *testing.T) {
 					},
 				}
 			},
-		}}
+		},
+		{
+			name:         "GET list repo failure",
+			wantStatus:   http.StatusInternalServerError,
+			wantErrorMsg: "internal server error",
+			setupRepo: func() *mockBananaRepository {
+				return &mockBananaRepository{
+					listFn: func(_ context.Context, _ domain.ListOptions) (domain.Page, error) {
+						return domain.Page{}, errors.New("db down")
+					},
+				}
+			},
+		},
+	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -551,7 +622,12 @@ func TestBananaHandlerList(t *testing.T) {
 			}
 
 			if tt.wantErrorMsg != "" {
-
+				if envelope.Data != nil {
+					t.Fatalf("expected nil data, got %v", envelope.Data)
+				}
+				if envelope.Error == nil || *envelope.Error != tt.wantErrorMsg {
+					t.Fatalf("error = %v, want %q", envelope.Error, tt.wantErrorMsg)
+				}
 			} else {
 				if envelope.Error != nil {
 					t.Fatalf("unexpected error: %s", *envelope.Error)
@@ -659,6 +735,21 @@ func TestBananaHandlerUpdate(t *testing.T) {
 							return domain.Banana{}, domain.ErrNotFound
 						}
 						return updatedBanana, nil
+					},
+				}
+			},
+		},
+		{
+			name:         "PUT repo failure",
+			pathID:       validUuid,
+			body:         validUpdateBody,
+			wantStatus:   http.StatusInternalServerError,
+			wantBanana:   nil,
+			wantErrorMsg: "internal server error",
+			setupRepo: func(pathID string) *mockBananaRepository {
+				return &mockBananaRepository{
+					updateFn: func(_ context.Context, _ domain.Banana) (domain.Banana, error) {
+						return domain.Banana{}, errors.New("db down")
 					},
 				}
 			},
