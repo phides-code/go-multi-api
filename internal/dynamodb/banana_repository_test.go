@@ -123,13 +123,15 @@ func TestBananaRepositoryGetByID(t *testing.T) {
 				if got != tt.wantBanana {
 					t.Fatalf("got %+v, want %+v", got, tt.wantBanana)
 				}
-			} else {
-				if err != nil {
-					t.Fatalf("GetByID: %v", err)
-				}
-				if got != tt.wantBanana {
-					t.Fatalf("got %+v, want %+v", got, tt.wantBanana)
-				}
+
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("GetByID: %v", err)
+			}
+			if got != tt.wantBanana {
+				t.Fatalf("got %+v, want %+v", got, tt.wantBanana)
 			}
 		})
 	}
@@ -203,13 +205,15 @@ func TestBananaRepositoryDelete(t *testing.T) {
 				if got != tt.wantBanana {
 					t.Fatalf("got %+v, want %+v", got, tt.wantBanana)
 				}
-			} else {
-				if err != nil {
-					t.Fatalf("Delete: %v", err)
-				}
-				if got != tt.wantBanana {
-					t.Fatalf("got %+v, want %+v", got, tt.wantBanana)
-				}
+
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("Delete: %v", err)
+			}
+			if got != tt.wantBanana {
+				t.Fatalf("got %+v, want %+v", got, tt.wantBanana)
 			}
 		})
 	}
@@ -283,13 +287,15 @@ func TestBananaRepositoryUpdate(t *testing.T) {
 				if got != tt.wantBanana {
 					t.Fatalf("got %+v, want %+v", got, tt.wantBanana)
 				}
-			} else {
-				if err != nil {
-					t.Fatalf("Update: %v", err)
-				}
-				if got != tt.wantBanana {
-					t.Fatalf("got %+v, want %+v", got, tt.wantBanana)
-				}
+
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("Update: %v", err)
+			}
+			if got != tt.wantBanana {
+				t.Fatalf("got %+v, want %+v", got, tt.wantBanana)
 			}
 		})
 	}
@@ -356,7 +362,14 @@ func TestBananaRepositoryCreate(t *testing.T) {
 				if !errors.Is(err, tt.wantErr) {
 					t.Fatalf("err = %v, want %v", err, tt.wantErr)
 				}
-			} else if err != nil {
+				if got != tt.wantBanana {
+					t.Fatalf("got %+v, want %+v", got, tt.wantBanana)
+				}
+
+				return
+			}
+
+			if err != nil {
 				t.Fatalf("Create: %v", err)
 			}
 			if got != tt.wantBanana {

@@ -154,33 +154,34 @@ func TestBananaHandlerCreate(t *testing.T) {
 				if envelope.Error == nil || *envelope.Error != tt.wantErrorMsg {
 					t.Fatalf("error = %v, want %q", envelope.Error, tt.wantErrorMsg)
 				}
-			} else {
-				if envelope.Error != nil {
-					t.Fatalf("unexpected error: %s", *envelope.Error)
-				}
 
-				data, err := json.Marshal(envelope.Data)
-				if err != nil {
-					t.Fatalf("marshal data: %v", err)
-				}
+				return
+			}
+			if envelope.Error != nil {
+				t.Fatalf("unexpected error: %s", *envelope.Error)
+			}
 
-				var banana domain.Banana
-				if err := json.Unmarshal(data, &banana); err != nil {
-					t.Fatalf("unmarshal banana: %v", err)
-				}
-				if banana.Content != tt.wantContent {
-					t.Fatalf("content = %q, want %q", banana.Content, tt.wantContent)
-				}
-				if err := domain.ValidateID(banana.ID); err != nil {
-					t.Fatalf("expected generated uuid: %v", err)
-				}
-				if banana.CreatedOn == 0 {
-					t.Fatal("expected createdOn in response")
-				}
-				now := uint64(time.Now().UnixMilli())
-				if banana.CreatedOn > now || now-banana.CreatedOn > 5000 {
-					t.Fatalf("createdOn = %d, expected within 5s of %d", banana.CreatedOn, now)
-				}
+			data, err := json.Marshal(envelope.Data)
+			if err != nil {
+				t.Fatalf("marshal data: %v", err)
+			}
+
+			var banana domain.Banana
+			if err := json.Unmarshal(data, &banana); err != nil {
+				t.Fatalf("unmarshal banana: %v", err)
+			}
+			if banana.Content != tt.wantContent {
+				t.Fatalf("content = %q, want %q", banana.Content, tt.wantContent)
+			}
+			if err := domain.ValidateID(banana.ID); err != nil {
+				t.Fatalf("expected generated uuid: %v", err)
+			}
+			if banana.CreatedOn == 0 {
+				t.Fatal("expected createdOn in response")
+			}
+			now := uint64(time.Now().UnixMilli())
+			if banana.CreatedOn > now || now-banana.CreatedOn > 5000 {
+				t.Fatalf("createdOn = %d, expected within 5s of %d", banana.CreatedOn, now)
 			}
 		})
 	}
@@ -282,24 +283,25 @@ func TestBananaHandlerDelete(t *testing.T) {
 				if envelope.Error == nil || *envelope.Error != tt.wantErrorMsg {
 					t.Fatalf("error = %v, want %q", envelope.Error, tt.wantErrorMsg)
 				}
-			} else {
-				if envelope.Error != nil {
-					t.Fatalf("unexpected error: %s", *envelope.Error)
-				}
+				return
+			}
 
-				data, err := json.Marshal(envelope.Data)
-				if err != nil {
-					t.Fatalf("marshal data: %v", err)
-				}
+			if envelope.Error != nil {
+				t.Fatalf("unexpected error: %s", *envelope.Error)
+			}
 
-				var banana domain.Banana
-				if err := json.Unmarshal(data, &banana); err != nil {
-					t.Fatalf("unmarshal banana: %v", err)
-				}
+			data, err := json.Marshal(envelope.Data)
+			if err != nil {
+				t.Fatalf("marshal data: %v", err)
+			}
 
-				if banana != *tt.wantBanana {
-					t.Fatalf("banana = %+v, want %+v", banana, tt.wantBanana)
-				}
+			var banana domain.Banana
+			if err := json.Unmarshal(data, &banana); err != nil {
+				t.Fatalf("unmarshal banana: %v", err)
+			}
+
+			if banana != *tt.wantBanana {
+				t.Fatalf("banana = %+v, want %+v", banana, tt.wantBanana)
 			}
 		})
 	}
@@ -416,24 +418,26 @@ func TestBananaHandlerGetByID(t *testing.T) {
 				if envelope.Error == nil || *envelope.Error != tt.wantErrorMsg {
 					t.Fatalf("error = %v, want %q", envelope.Error, tt.wantErrorMsg)
 				}
-			} else {
-				if envelope.Error != nil {
-					t.Fatalf("unexpected error: %s", *envelope.Error)
-				}
 
-				data, err := json.Marshal(envelope.Data)
-				if err != nil {
-					t.Fatalf("marshal data: %v", err)
-				}
+				return
+			}
 
-				var banana domain.Banana
-				if err := json.Unmarshal(data, &banana); err != nil {
-					t.Fatalf("unmarshal banana: %v", err)
-				}
+			if envelope.Error != nil {
+				t.Fatalf("unexpected error: %s", *envelope.Error)
+			}
 
-				if banana != *tt.wantBanana {
-					t.Fatalf("banana = %+v, want %+v", banana, tt.wantBanana)
-				}
+			data, err := json.Marshal(envelope.Data)
+			if err != nil {
+				t.Fatalf("marshal data: %v", err)
+			}
+
+			var banana domain.Banana
+			if err := json.Unmarshal(data, &banana); err != nil {
+				t.Fatalf("unmarshal banana: %v", err)
+			}
+
+			if banana != *tt.wantBanana {
+				t.Fatalf("banana = %+v, want %+v", banana, tt.wantBanana)
 			}
 		})
 	}
@@ -485,7 +489,6 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 			}
 
 			resp, err := h.Handle(context.Background(), req)
-
 			if err != nil {
 				t.Fatalf("handle: %v", err)
 			}
@@ -641,31 +644,33 @@ func TestBananaHandlerList(t *testing.T) {
 				if envelope.Error == nil || *envelope.Error != tt.wantErrorMsg {
 					t.Fatalf("error = %v, want %q", envelope.Error, tt.wantErrorMsg)
 				}
-			} else {
-				if envelope.Error != nil {
-					t.Fatalf("unexpected error: %s", *envelope.Error)
-				}
 
-				data, err := json.Marshal(envelope.Data)
-				if err != nil {
-					t.Fatalf("marshal data: %v", err)
-				}
+				return
+			}
 
-				var page domain.Page
-				if err := json.Unmarshal(data, &page); err != nil {
-					t.Fatalf("unmarshal page: %v", err)
+			if envelope.Error != nil {
+				t.Fatalf("unexpected error: %s", *envelope.Error)
+			}
+
+			data, err := json.Marshal(envelope.Data)
+			if err != nil {
+				t.Fatalf("marshal data: %v", err)
+			}
+
+			var page domain.Page
+			if err := json.Unmarshal(data, &page); err != nil {
+				t.Fatalf("unmarshal page: %v", err)
+			}
+			if len(page.Items) != len(tt.wantItems) {
+				t.Fatalf("len(page.Items) = %d, want %d", len(page.Items), len(tt.wantItems))
+			}
+			for i := range tt.wantItems {
+				if page.Items[i] != tt.wantItems[i] {
+					t.Fatalf("items[%d] = %+v, want %+v", i, page.Items[i], tt.wantItems[i])
 				}
-				if len(page.Items) != len(tt.wantItems) {
-					t.Fatalf("len(page.Items) = %d, want %d", len(page.Items), len(tt.wantItems))
-				}
-				for i := range tt.wantItems {
-					if page.Items[i] != tt.wantItems[i] {
-						t.Fatalf("items[%d] = %+v, want %+v", i, page.Items[i], tt.wantItems[i])
-					}
-				}
-				if page.NextCursor != tt.wantNextCursor {
-					t.Fatalf("nextCursor = %q, want %q", page.NextCursor, tt.wantNextCursor)
-				}
+			}
+			if page.NextCursor != tt.wantNextCursor {
+				t.Fatalf("nextCursor = %q, want %q", page.NextCursor, tt.wantNextCursor)
 			}
 		})
 	}
@@ -806,24 +811,26 @@ func TestBananaHandlerUpdate(t *testing.T) {
 				if envelope.Error == nil || *envelope.Error != tt.wantErrorMsg {
 					t.Fatalf("error = %v, want %q", envelope.Error, tt.wantErrorMsg)
 				}
-			} else {
-				if envelope.Error != nil {
-					t.Fatalf("unexpected error: %s", *envelope.Error)
-				}
 
-				data, err := json.Marshal(envelope.Data)
-				if err != nil {
-					t.Fatalf("marshal data: %v", err)
-				}
+				return
+			}
 
-				var banana domain.Banana
-				if err := json.Unmarshal(data, &banana); err != nil {
-					t.Fatalf("unmarshal banana: %v", err)
-				}
+			if envelope.Error != nil {
+				t.Fatalf("unexpected error: %s", *envelope.Error)
+			}
 
-				if banana != *tt.wantBanana {
-					t.Fatalf("banana = %+v, want %+v", banana, tt.wantBanana)
-				}
+			data, err := json.Marshal(envelope.Data)
+			if err != nil {
+				t.Fatalf("marshal data: %v", err)
+			}
+
+			var banana domain.Banana
+			if err := json.Unmarshal(data, &banana); err != nil {
+				t.Fatalf("unmarshal banana: %v", err)
+			}
+
+			if banana != *tt.wantBanana {
+				t.Fatalf("banana = %+v, want %+v", banana, tt.wantBanana)
 			}
 		})
 	}
