@@ -61,6 +61,7 @@ func TestBananaRepositoryGetByID(t *testing.T) {
 
 	validId := uuid.NewString()
 	validBanana := domain.Banana{ID: validId, Content: "ripe", CreatedOn: 12345}
+	errSDK := errors.New("dynamo unavailable")
 
 	item, err := attributevalue.MarshalMap(validBanana)
 	if err != nil {
@@ -96,6 +97,18 @@ func TestBananaRepositoryGetByID(t *testing.T) {
 			wantBanana: domain.Banana{},
 			wantErr:    domain.ErrNotFound,
 		},
+		{
+			name: "sdk error",
+			setupMock: func() *mockDynamoClient {
+				return &mockDynamoClient{
+					getItemFn: func(_ context.Context, _ *awsdynamodb.GetItemInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.GetItemOutput, error) {
+						return nil, errSDK
+					},
+				}
+			},
+			wantBanana: domain.Banana{},
+			wantErr:    errSDK,
+		},
 	}
 
 	for _, tt := range tests {
@@ -127,6 +140,7 @@ func TestBananaRepositoryDelete(t *testing.T) {
 
 	validId := uuid.NewString()
 	validBanana := domain.Banana{ID: validId, Content: "ripe", CreatedOn: 12345}
+	errSDK := errors.New("dynamo unavailable")
 
 	item, err := attributevalue.MarshalMap(validBanana)
 	if err != nil {
@@ -162,6 +176,18 @@ func TestBananaRepositoryDelete(t *testing.T) {
 			wantBanana: domain.Banana{},
 			wantErr:    domain.ErrNotFound,
 		},
+		{
+			name: "sdk error",
+			setupMock: func() *mockDynamoClient {
+				return &mockDynamoClient{
+					deleteItemFn: func(_ context.Context, _ *awsdynamodb.DeleteItemInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.DeleteItemOutput, error) {
+						return nil, errSDK
+					},
+				}
+			},
+			wantBanana: domain.Banana{},
+			wantErr:    errSDK,
+		},
 	}
 
 	for _, tt := range tests {
@@ -193,6 +219,7 @@ func TestBananaRepositoryUpdate(t *testing.T) {
 	t.Parallel()
 
 	updatedBanana := domain.Banana{ID: uuid.NewString(), Content: "updated", CreatedOn: 12345}
+	errSDK := errors.New("dynamo unavailable")
 
 	item, err := attributevalue.MarshalMap(updatedBanana)
 	if err != nil {
@@ -229,6 +256,18 @@ func TestBananaRepositoryUpdate(t *testing.T) {
 			wantBanana: domain.Banana{},
 			wantErr:    domain.ErrNotFound,
 		},
+		{
+			name: "sdk error",
+			setupMock: func() *mockDynamoClient {
+				return &mockDynamoClient{
+					updateItemFn: func(_ context.Context, _ *awsdynamodb.UpdateItemInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.UpdateItemOutput, error) {
+						return nil, errSDK
+					},
+				}
+			},
+			wantBanana: domain.Banana{},
+			wantErr:    errSDK,
+		},
 	}
 
 	for _, tt := range tests {
@@ -260,6 +299,7 @@ func TestBananaRepositoryCreate(t *testing.T) {
 	t.Parallel()
 
 	want := domain.Banana{ID: uuid.NewString(), Content: "new", CreatedOn: 12345}
+	errSDK := errors.New("dynamo unavailable")
 
 	tests := []struct {
 		name       string
@@ -293,6 +333,19 @@ func TestBananaRepositoryCreate(t *testing.T) {
 			wantBanana: domain.Banana{},
 			wantErr:    nil,
 			checkWrap:  true,
+		},
+		{
+			name: "sdk error",
+			setupMock: func() *mockDynamoClient {
+				return &mockDynamoClient{
+					putItemFn: func(_ context.Context, _ *awsdynamodb.PutItemInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.PutItemOutput, error) {
+						return nil, errSDK
+					},
+				}
+			},
+			wantBanana: domain.Banana{},
+			wantErr:    errSDK,
+			checkWrap:  false,
 		},
 	}
 
@@ -360,6 +413,7 @@ func TestBananaRepositoryList(t *testing.T) {
 		wantItems        []domain.Banana
 		wantNextCursorID string
 		listOpts         domain.ListOptions
+		wantErr          bool
 	}{
 		{
 			name: "returns items",
@@ -425,6 +479,29 @@ func TestBananaRepositoryList(t *testing.T) {
 			listOpts:  domain.ListOptions{Cursor: inputCursor},
 			wantItems: page2,
 		},
+		{
+			name: "invalid cursor",
+			setupMock: func() *mockDynamoClient {
+				return &mockDynamoClient{
+					scanFn: func(_ context.Context, _ *awsdynamodb.ScanInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.ScanOutput, error) {
+						return nil, errors.New("scan should not be called for an invalid cursor")
+					},
+				}
+			},
+			listOpts: domain.ListOptions{Cursor: "!!!not-base64!!!"},
+			wantErr:  true,
+		},
+		{
+			name: "sdk error",
+			setupMock: func() *mockDynamoClient {
+				return &mockDynamoClient{
+					scanFn: func(_ context.Context, _ *awsdynamodb.ScanInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.ScanOutput, error) {
+						return nil, errors.New("dynamo unavailable")
+					},
+				}
+			},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -434,9 +511,17 @@ func TestBananaRepositoryList(t *testing.T) {
 			repo := ddb.NewBananaRepository(tt.setupMock())
 			page, err := repo.List(context.Background(), tt.listOpts)
 
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				return
+			}
+
 			if err != nil {
 				t.Fatalf("List: %v", err)
 			}
+
 			if len(page.Items) != len(tt.wantItems) {
 				t.Fatalf("len(Items) = %d, want %d", len(page.Items), len(tt.wantItems))
 			}
