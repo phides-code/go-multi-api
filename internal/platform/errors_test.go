@@ -69,6 +69,20 @@ func TestErrorMapping(t *testing.T) {
 			wantMsg:    "not found",
 			wantClient: true,
 		},
+		{
+			name:       "invalid cursor",
+			err:        domain.ErrInvalidCursor,
+			wantStatus: http.StatusBadRequest,
+			wantMsg:    "invalid cursor",
+			wantClient: true,
+		},
+		{
+			name:       "already exists",
+			err:        domain.ErrAlreadyExists,
+			wantStatus: http.StatusConflict,
+			wantMsg:    "already exists",
+			wantClient: true,
+		},
 	}
 
 	for _, tt := range tests {

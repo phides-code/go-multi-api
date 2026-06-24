@@ -3,6 +3,7 @@ package handler_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -57,6 +58,23 @@ func TestRouterUnknownResource(t *testing.T) {
 	resp, err := router.Handle(context.Background(), events.APIGatewayProxyRequest{
 		HTTPMethod: "GET",
 		Path:       "/apples",
+		Headers:    cfTokenHeaders(testCFTToken),
+	})
+	if err != nil {
+		t.Fatalf("handle: %v", err)
+	}
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusNotFound)
+	}
+}
+
+func TestRouterEmptyPath(t *testing.T) {
+	t.Parallel()
+
+	router := handler.NewRouterWithCFTToken(platform.NewLogger(), testCFTToken)
+	resp, err := router.Handle(context.Background(), events.APIGatewayProxyRequest{
+		HTTPMethod: "GET",
+		Path:       "/",
 		Headers:    cfTokenHeaders(testCFTToken),
 	})
 	if err != nil {
@@ -134,6 +152,8 @@ func TestRouterAllowsOptionsWithoutCFTToken(t *testing.T) {
 	t.Parallel()
 
 	router := handler.NewRouterWithCFTToken(platform.NewLogger(), testCFTToken)
+	router.Register("bananas", handler.NewBananaHandler(stubRepo(), platform.NewLogger()))
+
 	resp, err := router.Handle(context.Background(), events.APIGatewayProxyRequest{
 		HTTPMethod: "OPTIONS",
 		Path:       "/bananas",
@@ -141,7 +161,19 @@ func TestRouterAllowsOptionsWithoutCFTToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("handle: %v", err)
 	}
-	if resp.StatusCode == http.StatusUnauthorized {
-		t.Fatal("expected OPTIONS preflight to bypass token check")
+
+	if resp.StatusCode != http.StatusMethodNotAllowed {
+		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusMethodNotAllowed)
+	}
+
+	var envelope platform.APIResponse
+	if err := json.Unmarshal([]byte(resp.Body), &envelope); err != nil {
+		t.Fatalf("unmarshal body: %v", err)
+	}
+	if envelope.Data != nil {
+		t.Fatalf("expected nil data, got %v", envelope.Data)
+	}
+	if envelope.Error == nil || *envelope.Error != "method not allowed" {
+		t.Fatalf("error = %v, want %q", envelope.Error, "method not allowed")
 	}
 }

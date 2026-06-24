@@ -12,10 +12,13 @@ func HTTPStatusForError(err error) int {
 	switch {
 	case errors.Is(err, domain.ErrInvalidID),
 		errors.Is(err, domain.ErrInvalidContent),
-		errors.Is(err, domain.ErrInvalidJSON):
+		errors.Is(err, domain.ErrInvalidJSON),
+		errors.Is(err, domain.ErrInvalidCursor):
 		return http.StatusBadRequest
 	case errors.Is(err, domain.ErrNotFound):
 		return http.StatusNotFound
+	case errors.Is(err, domain.ErrAlreadyExists):
+		return http.StatusConflict
 	case errors.Is(err, domain.ErrMethodNotAllowed):
 		return http.StatusMethodNotAllowed
 	default:
@@ -33,8 +36,12 @@ func ClientErrorMessage(err error) string {
 		return "invalid json"
 	case errors.Is(err, domain.ErrNotFound):
 		return "not found"
+	case errors.Is(err, domain.ErrAlreadyExists):
+		return "already exists"
 	case errors.Is(err, domain.ErrMethodNotAllowed):
 		return "method not allowed"
+	case errors.Is(err, domain.ErrInvalidCursor):
+		return "invalid cursor"
 	default:
 		return "internal server error"
 	}

@@ -306,7 +306,6 @@ func TestBananaRepositoryCreate(t *testing.T) {
 		setupMock  func() *mockDynamoClient
 		wantBanana domain.Banana
 		wantErr    error
-		checkWrap  bool
 	}{
 		{
 			name: "success",
@@ -319,7 +318,6 @@ func TestBananaRepositoryCreate(t *testing.T) {
 			},
 			wantBanana: want,
 			wantErr:    nil,
-			checkWrap:  false,
 		},
 		{
 			name: "duplicate id",
@@ -331,8 +329,7 @@ func TestBananaRepositoryCreate(t *testing.T) {
 				}
 			},
 			wantBanana: domain.Banana{},
-			wantErr:    nil,
-			checkWrap:  true,
+			wantErr:    domain.ErrAlreadyExists,
 		},
 		{
 			name: "sdk error",
@@ -345,7 +342,6 @@ func TestBananaRepositoryCreate(t *testing.T) {
 			},
 			wantBanana: domain.Banana{},
 			wantErr:    errSDK,
-			checkWrap:  false,
 		},
 	}
 
@@ -355,24 +351,6 @@ func TestBananaRepositoryCreate(t *testing.T) {
 
 			repo := ddb.NewBananaRepository(tt.setupMock())
 			got, err := repo.Create(context.Background(), want)
-
-			if tt.checkWrap {
-				if err == nil {
-					t.Fatal("expected error")
-				}
-				if errors.Is(err, domain.ErrNotFound) {
-					t.Fatal("duplicate id should not map to ErrNotFound")
-				}
-
-				var cond *types.ConditionalCheckFailedException
-				if !errors.As(err, &cond) {
-					t.Fatalf("expected ConditionalCheckFailedException in chain, got %v", err)
-				}
-				if got != tt.wantBanana {
-					t.Fatalf("got %+v, want %+v", got, tt.wantBanana)
-				}
-				return
-			}
 
 			if tt.wantErr != nil {
 				if !errors.Is(err, tt.wantErr) {
@@ -414,6 +392,7 @@ func TestBananaRepositoryList(t *testing.T) {
 		wantNextCursorID string
 		listOpts         domain.ListOptions
 		wantErr          bool
+		wantErrIs        error
 	}{
 		{
 			name: "returns items",
@@ -488,8 +467,9 @@ func TestBananaRepositoryList(t *testing.T) {
 					},
 				}
 			},
-			listOpts: domain.ListOptions{Cursor: "!!!not-base64!!!"},
-			wantErr:  true,
+			listOpts:  domain.ListOptions{Cursor: "!!!not-base64!!!"},
+			wantErr:   true,
+			wantErrIs: domain.ErrInvalidCursor,
 		},
 		{
 			name: "sdk error",
@@ -514,6 +494,9 @@ func TestBananaRepositoryList(t *testing.T) {
 			if tt.wantErr {
 				if err == nil {
 					t.Fatal("expected error, got nil")
+				}
+				if tt.wantErrIs != nil && !errors.Is(err, tt.wantErrIs) {
+					t.Fatalf("err = %v, want %v", err, tt.wantErrIs)
 				}
 				return
 			}

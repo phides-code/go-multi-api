@@ -589,6 +589,19 @@ func TestBananaHandlerList(t *testing.T) {
 				}
 			},
 		},
+		{
+			name:         "GET list invalid cursor",
+			wantStatus:   http.StatusBadRequest,
+			wantErrorMsg: "invalid cursor",
+			queryCursor:  "!!!not-base64!!!",
+			setupRepo: func() *mockBananaRepository {
+				return &mockBananaRepository{
+					listFn: func(_ context.Context, _ domain.ListOptions) (domain.Page, error) {
+						return domain.Page{}, domain.ErrInvalidCursor
+					},
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {

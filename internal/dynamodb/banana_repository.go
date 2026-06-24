@@ -48,7 +48,7 @@ func (r *BananaRepository) Create(ctx context.Context, banana domain.Banana) (do
 	if err != nil {
 		var conditionalCheck *types.ConditionalCheckFailedException
 		if errors.As(err, &conditionalCheck) {
-			return domain.Banana{}, fmt.Errorf("create banana: %w", err)
+			return domain.Banana{}, domain.ErrAlreadyExists
 		}
 		return domain.Banana{}, fmt.Errorf("put item: %w", err)
 	}
@@ -92,7 +92,7 @@ func (r *BananaRepository) List(ctx context.Context, opts domain.ListOptions) (d
 	if opts.Cursor != "" {
 		startKey, err := decodeCursor(opts.Cursor)
 		if err != nil {
-			return domain.Page{}, fmt.Errorf("decode cursor: %w", err)
+			return domain.Page{}, domain.ErrInvalidCursor
 		}
 		input.ExclusiveStartKey = startKey
 	}

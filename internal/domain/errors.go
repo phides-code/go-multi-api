@@ -4,9 +4,11 @@ package domain
 import "errors"
 
 var (
-	ErrNotFound        = errors.New("banana not found")
-	ErrInvalidID       = errors.New("invalid id")
-	ErrInvalidContent  = errors.New("invalid content")
-	ErrInvalidJSON     = errors.New("invalid json")
+	ErrNotFound         = errors.New("banana not found")
+	ErrInvalidID        = errors.New("invalid id")
+	ErrInvalidContent   = errors.New("invalid content")
+	ErrInvalidJSON      = errors.New("invalid json")
 	ErrMethodNotAllowed = errors.New("method not allowed")
+	ErrAlreadyExists    = errors.New("banana already exists")
+	ErrInvalidCursor    = errors.New("invalid cursor")
 )
