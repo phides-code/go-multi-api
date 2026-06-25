@@ -60,21 +60,21 @@ On success, `error` is null and `data` holds the result. On failure, `data` is n
 
 ### Bananas (`/bananas`)
 
-| Method | Path | Behavior |
-|--------|------|----------|
-| `GET` | `/bananas` | List bananas (paginated; see below) |
-| `GET` | `/bananas/{id}` | Get one banana by UUID |
-| `POST` | `/bananas` | Create a banana; server generates UUID v4 id |
-| `PUT` | `/bananas/{id}` | Update `content` only; 404 if missing |
-| `DELETE` | `/bananas/{id}` | Hard delete; returns the deleted item |
+| Method   | Path            | Behavior                                     |
+| -------- | --------------- | -------------------------------------------- |
+| `GET`    | `/bananas`      | List bananas (paginated; see below)          |
+| `GET`    | `/bananas/{id}` | Get one banana by UUID                       |
+| `POST`   | `/bananas`      | Create a banana; server generates UUID v4 id |
+| `PUT`    | `/bananas/{id}` | Update `content` only; 404 if missing        |
+| `DELETE` | `/bananas/{id}` | Hard delete; returns the deleted item        |
 
 **Banana shape:**
 
 ```json
 {
-  "id": "uuid",
-  "content": "string",
-  "createdOn": 1717516800000
+    "id": "uuid",
+    "content": "string",
+    "createdOn": 1717516800000
 }
 ```
 
@@ -94,17 +94,17 @@ On success, `error` is null and `data` holds the result. On failure, `data` is n
 
 ```json
 {
-  "data": {
-    "items": [
-      {
-        "id": "uuid",
-        "content": "string",
-        "createdOn": 1717516800000
-      }
-    ],
-    "nextCursor": "opaque-cursor"
-  },
-  "error": null
+    "data": {
+        "items": [
+            {
+                "id": "uuid",
+                "content": "string",
+                "createdOn": 1717516800000
+            }
+        ],
+        "nextCursor": "opaque-cursor"
+    },
+    "error": null
 }
 ```
 
@@ -194,11 +194,11 @@ DynamoDB is schemaless: you do not alter `template.yml` for a new optional attri
 
 ### 4. Tests
 
-| Layer | File | What to add |
-|-------|------|-------------|
-| Domain | `internal/domain/banana_test.go` | Validation edge cases for the new field |
-| Handler | `internal/handler/banana_handler_test.go` | Client-error row in `TestBananaHandlerClientErrors`; success assertions in Create/Update/GetByID/List if behavior changes |
-| DynamoDB | `internal/dynamodb/banana_repository_test.go` | Update success path if the field is updatable; existing not-found / SDK-error patterns stay the same |
+| Layer    | File                                          | What to add                                                                                                               |
+| -------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Domain   | `internal/domain/banana_test.go`              | Validation edge cases for the new field                                                                                   |
+| Handler  | `internal/handler/banana_handler_test.go`     | Client-error row in `TestBananaHandlerClientErrors`; success assertions in Create/Update/GetByID/List if behavior changes |
+| DynamoDB | `internal/dynamodb/banana_repository_test.go` | Update success path if the field is updatable; existing not-found / SDK-error patterns stay the same                      |
 
 Run `make test` before opening a PR.
 
@@ -208,18 +208,20 @@ Update the **Banana shape**, **Create body**, and **Update body** sections above
 
 ### Checklist
 
-| Step | File(s) |
-|------|---------|
-| Struct + tags | `internal/domain/banana.go` |
-| Validation | `internal/domain/banana.go`, `banana_test.go` |
-| JSON parsing | `internal/handler/banana_handler.go` |
+| Step                             | File(s)                                                               |
+| -------------------------------- | --------------------------------------------------------------------- |
+| Struct + tags                    | `internal/domain/banana.go`                                           |
+| Validation                       | `internal/domain/banana.go`, `banana_test.go`                         |
+| JSON parsing                     | `internal/handler/banana_handler.go`                                  |
 | Update expression (if updatable) | `internal/dynamodb/banana_repository.go`, `banana_repository_test.go` |
-| HTTP tests | `internal/handler/banana_handler_test.go` |
-| API docs | `README.md` (this file) |
+| HTTP tests                       | `internal/handler/banana_handler_test.go`                             |
+| API docs                         | `README.md` (this file)                                               |
 
 Optional fields with no validation need only struct tags and handler JSON wiring — still add a handler test that proves the field round-trips on create/get.
 
 ## Adding a new table
+
+Copy the file list from [docs/new-resource.md](docs/new-resource.md) when starting a new resource.
 
 Each DynamoDB table gets its **own** entity, repository interface, DynamoDB implementation, HTTP handler, and tests. Reuse `internal/platform` and the router pattern; do not share handlers or repository interfaces across resources.
 
@@ -274,14 +276,16 @@ Create `internal/handler/<resource>_handler_test.go`:
 
 The router dispatches by the first URL path segment. A resource is reachable only after `Register("<prefix>", ...)` — you do not edit `router.go` when adding a table.
 
-**Lambda entrypoint** — in `cmd/lambda/main.go`:
+**Composition** — in `internal/app/wire.go`, inside `newRouter`:
 
 ```go
 appleRepo := dynamodbrepo.NewAppleRepository(dynamodb.NewFromConfig(cfg))
 router.Register("apples", handler.NewAppleHandler(appleRepo, logger))
 ```
 
-Add a dispatch test in `internal/handler/router_test.go` (see `TestRouterDispatchesRegisteredPrefix`).
+`cmd/lambda/main.go` calls `app.NewRouter` and starts the Lambda handler.
+
+Add a dispatch test in `internal/handler/router_test.go` (see `TestRouterDispatchesRegisteredPrefix`). Wiring is smoke-tested in `internal/app/wire_test.go`.
 
 ### 6. Infrastructure (`template.yml`)
 
@@ -291,6 +295,27 @@ For each new table:
 2. Add a `DynamoDBCrudPolicy` (or a narrower policy) on `AppnameBackendFunction` for that table.
 3. Add API Gateway `Events` only for the HTTP methods this resource exposes (include `OPTIONS` for CORS preflight on each path).
 
+**Table naming** — keep these three in sync for each resource:
+
+| What                                               | Pattern                   | Banana example                        |
+| -------------------------------------------------- | ------------------------- | ------------------------------------- |
+| SAM logical ID                                     | `Appname<Resources>Table` | `AppnameBananasTable`                 |
+| Physical table name (`TableName`)                  | `Appname<Resources>`      | `AppnameBananas`                      |
+| Go constant in `dynamodb/<resource>_repository.go` | same as physical name     | `bananasTableName = "AppnameBananas"` |
+
+`DynamoDBCrudPolicy` references the SAM logical ID: `TableName: !Ref AppnameBananasTable`.
+
+**IAM** — add one `DynamoDBCrudPolicy` per table on `AppnameBackendFunction`. Reference the table resource (`!Ref AppnameBananasTable`), not a wildcard. When you add apples, append a second policy entry; do not replace or broaden the bananas policy.
+
+```yaml
+Policies:
+  - AWSLambdaExecute
+  - DynamoDBCrudPolicy:
+      TableName: !Ref AppnameBananasTable
+  - DynamoDBCrudPolicy:
+      TableName: !Ref AppnameApplesTable
+```
+
 Redeploy after changes: `make deploy`.
 
 ### 7. Error mapping (if needed)
@@ -299,14 +324,14 @@ If the new resource introduces new client errors, add sentinel errors in `intern
 
 ### Checklist
 
-| Step | File(s) |
-|------|---------|
-| Entity + validation | `internal/domain/<resource>.go`, `<resource>_test.go` |
-| Repository interface | `internal/domain/<resource>_repository.go` |
-| DynamoDB impl | `internal/dynamodb/<resource>_repository.go` |
-| HTTP handler | `internal/handler/<resource>_handler.go`, `<resource>_handler_test.go` |
-| Router | `internal/handler/router_test.go` (dispatch test) |
-| Wiring | `cmd/lambda/main.go` (`Register` + repo construction) |
-| AWS resources | `template.yml` |
+| Step                 | File(s)                                                                                             |
+| -------------------- | --------------------------------------------------------------------------------------------------- |
+| Entity + validation  | `internal/domain/<resource>.go`, `<resource>_test.go`                                               |
+| Repository interface | `internal/domain/<resource>_repository.go`                                                          |
+| DynamoDB impl        | `internal/dynamodb/<resource>_repository.go`                                                        |
+| HTTP handler         | `internal/handler/<resource>_handler.go`, `<resource>_handler_test.go`                              |
+| Router               | `internal/handler/router_test.go` (dispatch test)                                                   |
+| Wiring               | `internal/app/wire.go` (`Register` + repo construction); `cmd/lambda/main.go` calls `app.NewRouter` |
+| AWS resources        | `template.yml`                                                                                      |
 
 Run `make test` before opening a PR.
