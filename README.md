@@ -155,6 +155,70 @@ make deploy
 
 CI (`.github/workflows/go.yml`) runs tests, `sam build`, and deploy on pushes to `main`.
 
+## Adding a field to an existing resource
+
+Use this when extending bananas (or any resource that already follows the template). Example: add `ripeness` to `Banana`.
+
+Work top-down: domain → handler → repository (only if updatable) → tests → API docs in this README.
+
+### 1. Domain entity and validation
+
+In `internal/domain/banana.go`:
+
+- Add the field to `Banana` with matching `json` and `dynamodbav` tags (attribute names must match what is stored in DynamoDB).
+- If clients may set the field on create or update, add it to `CreateBananaInput` / `UpdateBananaInput`.
+- Add or extend validation functions; call them from `ValidateCreateInput` / `ValidateUpdateInput`.
+
+Add table-driven cases in `internal/domain/banana_test.go` for each rule (empty, too long, invalid enum, etc.).
+
+If the field is **server-owned** (e.g. `createdOn`), do not add it to create/update inputs — set it in the handler or repository instead.
+
+### 2. HTTP handler
+
+In `internal/handler/banana_handler.go`:
+
+- Extend the anonymous JSON structs in `create` and `update` to parse the new field from the request body.
+- Map parsed values into `CreateBananaInput` / `UpdateBananaInput` before calling domain validation.
+- When building the `domain.Banana` passed to the repository, copy validated fields from the input.
+
+Handlers parse JSON and delegate rules to domain — do not validate business rules inline in the handler.
+
+### 3. DynamoDB adapter
+
+In `internal/dynamodb/banana_repository.go`:
+
+- **Create, GetByID, List, Delete** — usually no code change. `attributevalue.MarshalMap` / `UnmarshalMap` use struct tags; new attributes are read and written automatically.
+- **Update** — if the field is updatable via PUT, extend `UpdateExpression`, `ExpressionAttributeNames`, and `ExpressionAttributeValues` (today only `content` is updated). Immutable fields (`id`, `createdOn`) stay out of the expression.
+
+DynamoDB is schemaless: you do not alter `template.yml` for a new optional attribute on an existing table.
+
+### 4. Tests
+
+| Layer | File | What to add |
+|-------|------|-------------|
+| Domain | `internal/domain/banana_test.go` | Validation edge cases for the new field |
+| Handler | `internal/handler/banana_handler_test.go` | Client-error row in `TestBananaHandlerClientErrors`; success assertions in Create/Update/GetByID/List if behavior changes |
+| DynamoDB | `internal/dynamodb/banana_repository_test.go` | Update success path if the field is updatable; existing not-found / SDK-error patterns stay the same |
+
+Run `make test` before opening a PR.
+
+### 5. API contract
+
+Update the **Banana shape**, **Create body**, and **Update body** sections above so HTTP docs match what the handler accepts and returns.
+
+### Checklist
+
+| Step | File(s) |
+|------|---------|
+| Struct + tags | `internal/domain/banana.go` |
+| Validation | `internal/domain/banana.go`, `banana_test.go` |
+| JSON parsing | `internal/handler/banana_handler.go` |
+| Update expression (if updatable) | `internal/dynamodb/banana_repository.go`, `banana_repository_test.go` |
+| HTTP tests | `internal/handler/banana_handler_test.go` |
+| API docs | `README.md` (this file) |
+
+Optional fields with no validation need only struct tags and handler JSON wiring — still add a handler test that proves the field round-trips on create/get.
+
 ## Adding a new table
 
 Each DynamoDB table gets its **own** entity, repository interface, DynamoDB implementation, HTTP handler, and tests. Reuse `internal/platform` and the router pattern; do not share handlers or repository interfaces across resources.
