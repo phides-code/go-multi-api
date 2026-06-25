@@ -9,7 +9,7 @@ API Gateway  →  Lambda (router)  →  resource handler  →  repository  →  
 ```
 
 1. API Gateway forwards requests as `APIGatewayProxyRequest` events.
-2. The router checks auth, matches the first path segment (e.g. `bananas`), and delegates to that resource's handler.
+2. The router checks auth, takes the first path segment (e.g. `bananas`), looks it up in registered handlers, and delegates to that resource's handler.
 3. The handler parses the HTTP method and body, runs domain validation, and calls the repository.
 4. The repository reads and writes DynamoDB using AWS SDK v2.
 5. All responses use the same JSON envelope (see below).
@@ -272,12 +272,7 @@ Create `internal/handler/<resource>_handler_test.go`:
 
 ### 5. Wire it up
 
-**Router** — add a case in `internal/handler/router.go` `matchResource`:
-
-```go
-case "apples":
-    return "apples", true
-```
+The router dispatches by the first URL path segment. A resource is reachable only after `Register("<prefix>", ...)` — you do not edit `router.go` when adding a table.
 
 **Lambda entrypoint** — in `cmd/lambda/main.go`:
 
@@ -285,6 +280,8 @@ case "apples":
 appleRepo := dynamodbrepo.NewAppleRepository(dynamodb.NewFromConfig(cfg))
 router.Register("apples", handler.NewAppleHandler(appleRepo, logger))
 ```
+
+Add a dispatch test in `internal/handler/router_test.go` (see `TestRouterDispatchesRegisteredPrefix`).
 
 ### 6. Infrastructure (`template.yml`)
 
@@ -308,8 +305,8 @@ If the new resource introduces new client errors, add sentinel errors in `intern
 | Repository interface | `internal/domain/<resource>_repository.go` |
 | DynamoDB impl | `internal/dynamodb/<resource>_repository.go` |
 | HTTP handler | `internal/handler/<resource>_handler.go`, `<resource>_handler_test.go` |
-| Router | `internal/handler/router.go`, `router_test.go` |
-| Wiring | `cmd/lambda/main.go` |
+| Router | `internal/handler/router_test.go` (dispatch test) |
+| Wiring | `cmd/lambda/main.go` (`Register` + repo construction) |
 | AWS resources | `template.yml` |
 
 Run `make test` before opening a PR.

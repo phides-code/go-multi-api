@@ -50,12 +50,13 @@ func (r *Router) Handle(ctx context.Context, req events.APIGatewayProxyRequest) 
 		"path", req.Path,
 	)
 
-	resource, ok := matchResource(req.Path)
+	segment, ok := firstPathSegment(req.Path)
+
 	if !ok {
 		return platform.ErrorResponse(404, "not found")
 	}
 
-	handler, ok := r.handlers[resource]
+	handler, ok := r.handlers[segment]
 	if !ok {
 		return platform.ErrorResponse(404, "not found")
 	}
@@ -63,17 +64,10 @@ func (r *Router) Handle(ctx context.Context, req events.APIGatewayProxyRequest) 
 	return handler.Handle(ctx, req)
 }
 
-func matchResource(path string) (string, bool) {
+func firstPathSegment(path string) (string, bool) {
 	trimmed := strings.Trim(path, "/")
 	if trimmed == "" {
 		return "", false
 	}
-
-	segment := strings.Split(trimmed, "/")[0]
-	switch segment {
-	case "bananas":
-		return "bananas", true
-	default:
-		return "", false
-	}
+	return strings.Split(trimmed, "/")[0], true
 }

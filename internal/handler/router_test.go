@@ -20,6 +20,12 @@ func cfTokenHeaders(token string) map[string]string {
 	return map[string]string{"X-CF-Token": token}
 }
 
+type stubResourceHandler struct{}
+
+func (stubResourceHandler) Handle(_ context.Context, _ events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	return platform.SuccessResponse(http.StatusOK, map[string]bool{"dispatched": true})
+}
+
 func TestRouterDispatchesBananas(t *testing.T) {
 	t.Parallel()
 
@@ -175,5 +181,40 @@ func TestRouterAllowsOptionsWithoutCFTToken(t *testing.T) {
 	}
 	if envelope.Error == nil || *envelope.Error != "method not allowed" {
 		t.Fatalf("error = %v, want %q", envelope.Error, "method not allowed")
+	}
+}
+
+func TestRouterDispatchesRegisteredPrefix(t *testing.T) {
+	t.Parallel()
+
+	router := handler.NewRouterWithCFTToken(platform.NewLogger(), testCFTToken)
+	router.Register("apples", stubResourceHandler{})
+
+	resp, err := router.Handle(context.Background(), events.APIGatewayProxyRequest{
+		HTTPMethod: "GET",
+		Path:       "/apples",
+		Headers:    cfTokenHeaders(testCFTToken),
+	})
+	if err != nil {
+		t.Fatalf("handle: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusOK)
+	}
+
+	var envelope platform.APIResponse
+	if err := json.Unmarshal([]byte(resp.Body), &envelope); err != nil {
+		t.Fatalf("unmarshal body: %v", err)
+	}
+	if envelope.Error != nil {
+		t.Fatalf("unexpected error: %v", envelope.Error)
+	}
+
+	data, ok := envelope.Data.(map[string]any)
+	if !ok {
+		t.Fatalf("data type = %T, want map[string]any", envelope.Data)
+	}
+	if dispatched, _ := data["dispatched"].(bool); !dispatched {
+		t.Fatalf("data[dispatched] = %v, want true", data["dispatched"])
 	}
 }

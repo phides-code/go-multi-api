@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -77,6 +78,7 @@ func TestBananaHandlerCreate(t *testing.T) {
 			}
 
 			banana := decodeBananaData(t, envelope)
+			assertBananaDataKeys(t, envelope)
 
 			if banana.Content != tt.wantContent {
 				t.Fatalf("content = %q, want %q", banana.Content, tt.wantContent)
@@ -291,6 +293,7 @@ func TestBananaHandlerGetByID(t *testing.T) {
 			}
 
 			banana := decodeBananaData(t, envelope)
+			assertBananaDataKeys(t, envelope)
 
 			if banana != *tt.wantBanana {
 				t.Fatalf("banana = %+v, want %+v", banana, tt.wantBanana)
@@ -330,6 +333,20 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 			body:         "",
 			wantStatus:   http.StatusMethodNotAllowed,
 			wantErrorMsg: "method not allowed",
+		},
+		{
+			name:         "POST whitespace content",
+			method:       "POST",
+			body:         `{"content":"   "}`,
+			wantStatus:   http.StatusBadRequest,
+			wantErrorMsg: "invalid content",
+		},
+		{
+			name:         "POST content too long",
+			method:       "POST",
+			body:         fmt.Sprintf(`{"content":%q}`, strings.Repeat("a", domain.MaxContentLength+1)),
+			wantStatus:   http.StatusBadRequest,
+			wantErrorMsg: "invalid content",
 		},
 	}
 
@@ -590,6 +607,24 @@ func TestBananaHandlerUpdate(t *testing.T) {
 					},
 				}
 			},
+		},
+		{
+			name:         "PUT whitespace content",
+			pathID:       validUuid,
+			body:         `{"content":"   "}`,
+			wantStatus:   http.StatusBadRequest,
+			wantBanana:   nil,
+			wantErrorMsg: "invalid content",
+			setupRepo:    func(pathID string) *mockBananaRepository { return stubRepo() },
+		},
+		{
+			name:         "PUT content too long",
+			pathID:       validUuid,
+			body:         fmt.Sprintf(`{"content":%q}`, strings.Repeat("a", domain.MaxContentLength+1)),
+			wantStatus:   http.StatusBadRequest,
+			wantBanana:   nil,
+			wantErrorMsg: "invalid content",
+			setupRepo:    func(pathID string) *mockBananaRepository { return stubRepo() },
 		},
 	}
 
