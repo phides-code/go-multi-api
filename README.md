@@ -159,9 +159,15 @@ CI (`.github/workflows/go.yml`) runs tests, `sam build`, and deploy on pushes to
 
 Use this when extending bananas (or any resource that already follows the template). Example: add `ripeness` to `Banana`.
 
-Work top-down: domain → handler → repository (only if updatable) → tests → API docs in this README.
+**TDD order:** write a failing test that specifies the behavior, then the minimum code to pass. Domain rules first; HTTP contract second; persistence last (only if updatable).
 
-### 1. Domain entity and validation
+### 1. Domain tests
+
+In `internal/domain/banana_test.go`, add table-driven cases for each new rule (empty, too long, invalid enum, etc.).
+
+Run `go test ./internal/domain/ -run TestValidate…` — tests should **fail** until step 2.
+
+### 2. Domain entity and validation
 
 In `internal/domain/banana.go`:
 
@@ -169,11 +175,20 @@ In `internal/domain/banana.go`:
 - If clients may set the field on create or update, add it to `CreateBananaInput` / `UpdateBananaInput`.
 - Add or extend validation functions; call them from `ValidateCreateInput` / `ValidateUpdateInput`.
 
-Add table-driven cases in `internal/domain/banana_test.go` for each rule (empty, too long, invalid enum, etc.).
-
 If the field is **server-owned** (e.g. `createdOn`), do not add it to create/update inputs — set it in the handler or repository instead.
 
-### 2. HTTP handler
+Domain tests from step 1 should now pass.
+
+### 3. Handler tests
+
+In `internal/handler/banana_handler_test.go`:
+
+- Client-error row in `TestBananaHandlerClientErrors` (POST) and/or `TestBananaHandlerUpdate` (PUT) for each rule clients can hit.
+- Success assertions in Create/Update/GetByID/List if the field changes responses; use `assertBananaDataKeys` when the wire shape changes.
+
+Run the new handler tests — they should **fail** until step 4.
+
+### 4. HTTP handler
 
 In `internal/handler/banana_handler.go`:
 
@@ -183,41 +198,42 @@ In `internal/handler/banana_handler.go`:
 
 Handlers parse JSON and delegate rules to domain — do not validate business rules inline in the handler.
 
-### 3. DynamoDB adapter
+### 5. DynamoDB tests (if updatable)
+
+If the field is updatable via PUT, add an update success case in `internal/dynamodb/banana_repository_test.go` (existing not-found / SDK-error patterns stay the same).
+
+Test should **fail** until step 6.
+
+### 6. DynamoDB adapter (if updatable)
 
 In `internal/dynamodb/banana_repository.go`:
 
 - **Create, GetByID, List, Delete** — usually no code change. `attributevalue.MarshalMap` / `UnmarshalMap` use struct tags; new attributes are read and written automatically.
-- **Update** — if the field is updatable via PUT, extend `UpdateExpression`, `ExpressionAttributeNames`, and `ExpressionAttributeValues` (today only `content` is updated). Immutable fields (`id`, `createdOn`) stay out of the expression.
+- **Update** — extend `UpdateExpression`, `ExpressionAttributeNames`, and `ExpressionAttributeValues` (today only `content` is updated). Immutable fields (`id`, `createdOn`) stay out of the expression.
 
 DynamoDB is schemaless: you do not alter `template.yml` for a new optional attribute on an existing table.
 
-### 4. Tests
+Skip steps 5–6 when the field is read-only or set only on create.
 
-| Layer    | File                                          | What to add                                                                                                               |
-| -------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Domain   | `internal/domain/banana_test.go`              | Validation edge cases for the new field                                                                                   |
-| Handler  | `internal/handler/banana_handler_test.go`     | Client-error row in `TestBananaHandlerClientErrors`; success assertions in Create/Update/GetByID/List if behavior changes |
-| DynamoDB | `internal/dynamodb/banana_repository_test.go` | Update success path if the field is updatable; existing not-found / SDK-error patterns stay the same                      |
-
-Run `make test` before opening a PR.
-
-### 5. API contract
+### 7. API contract
 
 Update the **Banana shape**, **Create body**, and **Update body** sections above so HTTP docs match what the handler accepts and returns.
 
-### Checklist
+Run `make test` before opening a PR.
 
-| Step                             | File(s)                                                               |
-| -------------------------------- | --------------------------------------------------------------------- |
-| Struct + tags                    | `internal/domain/banana.go`                                           |
-| Validation                       | `internal/domain/banana.go`, `banana_test.go`                         |
-| JSON parsing                     | `internal/handler/banana_handler.go`                                  |
-| Update expression (if updatable) | `internal/dynamodb/banana_repository.go`, `banana_repository_test.go` |
-| HTTP tests                       | `internal/handler/banana_handler_test.go`                             |
-| API docs                         | `README.md` (this file)                                               |
+### Checklist (TDD order)
 
-Optional fields with no validation need only struct tags and handler JSON wiring — still add a handler test that proves the field round-trips on create/get.
+| Step | File(s) |
+| ---- | ------- |
+| Domain tests | `internal/domain/banana_test.go` |
+| Struct + validation | `internal/domain/banana.go` |
+| Handler tests | `internal/handler/banana_handler_test.go` |
+| JSON parsing | `internal/handler/banana_handler.go` |
+| DynamoDB tests (if updatable) | `internal/dynamodb/banana_repository_test.go` |
+| Update expression (if updatable) | `internal/dynamodb/banana_repository.go` |
+| API docs | `README.md` (this file) |
+
+Optional fields with no validation: still add a handler test that proves the field round-trips on create/get.
 
 ## Adding a new table
 
@@ -227,7 +243,25 @@ Each DynamoDB table gets its **own** entity, repository interface, DynamoDB impl
 
 A resource only needs the HTTP methods it actually uses. Define those in the handler **and** in `template.yml` — do not implement unused CRUD operations just because bananas have them.
 
-### 1. Domain entity and validation
+**TDD order:** pick one vertical slice (e.g. `GET /apples` returns an empty page). Write a failing test for the public contract, then the minimum code to pass. Expand method by method.
+
+### 1. First failing test (HTTP contract)
+
+In `internal/handler/<resource>_handler_test.go`:
+
+- Mock the repository interface in the test file.
+- Add one test for the thinnest slice you are shipping first (often `List` or `Create`).
+- Assert status, envelope shape, and response body.
+
+In `internal/handler/router_test.go`:
+
+- Register the new handler and add a dispatch test (see `TestRouterDispatchesRegisteredPrefix`).
+
+Tests should **fail** — handler, interface, and wiring do not exist yet.
+
+### 2. Domain tests and entity
+
+Create `internal/domain/<resource>_test.go` with validation table cases.
 
 Create `internal/domain/<resource>.go`:
 
@@ -235,28 +269,15 @@ Create `internal/domain/<resource>.go`:
 - Input types for create/update payloads.
 - Validation functions (reuse `ValidateID` and `NewID` from `internal/domain/id.go` when using UUID keys).
 
-Add `internal/domain/<resource>_test.go` for validation rules.
-
-### 2. Repository interface
-
 Create `internal/domain/<resource>_repository.go`:
 
-- Define a `<Resource>Repository` interface with only the methods the handler needs (e.g. `List` and `Create`, or full CRUD like bananas).
+- Define a `<Resource>Repository` interface with only the methods the handler needs.
 - Define a `<Resource>Page` type if the resource supports listing (`Items`, `NextCursor`).
 - Reuse `ListOptions` if pagination matches the banana pattern.
 
-### 3. DynamoDB implementation
+Domain tests should pass after validation is implemented.
 
-Create `internal/dynamodb/<resource>_repository.go`:
-
-- Accept `*dynamodb.Client` in the constructor (same as `NewBananaRepository`).
-- Hardcode the table name constant (must match `template.yml`).
-- Implement each repository method using SDK v2 (`GetItem`, `PutItem`, `Scan`, etc.).
-- Map `domain.ErrNotFound` when an item is missing.
-
-Use `internal/dynamodb/banana_repository.go` as a reference for pagination cursor encoding and conditional writes.
-
-### 4. HTTP handler
+### 3. HTTP handler
 
 Create `internal/handler/<resource>_handler.go`:
 
@@ -266,11 +287,22 @@ Create `internal/handler/<resource>_handler.go`:
 - Parse JSON bodies, call domain validation, call the repository.
 - Return `platform.SuccessResponse` / `platform.ErrorResponse` via a local `errorResponse` helper (see `banana_handler.go`).
 
-Create `internal/handler/<resource>_handler_test.go`:
+Handler tests from step 1 should pass with the mock repo. Add tests for each supported method, client errors, and one repo-failure → 500 per operation.
 
-- Mock the repository interface in the test file.
-- Test each supported method, status codes, and the response envelope.
-- For router integration, add a dispatch test in `router_test.go`.
+### 4. DynamoDB tests and implementation
+
+Create `internal/dynamodb/<resource>_repository_test.go` first:
+
+- CRUD success paths you implement, plus not-found and one SDK error per method (copy the banana patterns).
+
+Create `internal/dynamodb/<resource>_repository.go`:
+
+- Accept `*dynamodb.Client` in the constructor (same as `NewBananaRepository`).
+- Hardcode the table name constant (must match `template.yml`).
+- Implement each repository method using SDK v2 (`GetItem`, `PutItem`, `Scan`, etc.).
+- Map `domain.ErrNotFound` when an item is missing.
+
+Use `internal/dynamodb/banana_repository.go` as a reference for pagination cursor encoding and conditional writes.
 
 ### 5. Wire it up
 
@@ -285,7 +317,7 @@ router.Register("apples", handler.NewAppleHandler(appleRepo, logger))
 
 `cmd/lambda/main.go` calls `app.NewRouter` and starts the Lambda handler.
 
-Add a dispatch test in `internal/handler/router_test.go` (see `TestRouterDispatchesRegisteredPrefix`). Wiring is smoke-tested in `internal/app/wire_test.go`.
+Wiring is smoke-tested in `internal/app/wire_test.go` — extend or mirror `TestWiringSmokeGETBananas` when appropriate.
 
 ### 6. Infrastructure (`template.yml`)
 
@@ -322,16 +354,17 @@ Redeploy after changes: `make deploy`.
 
 If the new resource introduces new client errors, add sentinel errors in `internal/domain/errors.go` and map them in `internal/platform/errors.go` (`HTTPStatusForError`, `ClientErrorMessage`).
 
-### Checklist
+### Checklist (TDD order)
 
-| Step                 | File(s)                                                                                             |
-| -------------------- | --------------------------------------------------------------------------------------------------- |
-| Entity + validation  | `internal/domain/<resource>.go`, `<resource>_test.go`                                               |
-| Repository interface | `internal/domain/<resource>_repository.go`                                                          |
-| DynamoDB impl        | `internal/dynamodb/<resource>_repository.go`                                                        |
-| HTTP handler         | `internal/handler/<resource>_handler.go`, `<resource>_handler_test.go`                              |
-| Router               | `internal/handler/router_test.go` (dispatch test)                                                   |
-| Wiring               | `internal/app/wire.go` (`Register` + repo construction); `cmd/lambda/main.go` calls `app.NewRouter` |
-| AWS resources        | `template.yml`                                                                                      |
+| Step | File(s) |
+| ---- | ------- |
+| Handler + router tests (first slice) | `internal/handler/<resource>_handler_test.go`, `internal/handler/router_test.go` |
+| Domain tests + entity + interface | `internal/domain/<resource>_test.go`, `<resource>.go`, `<resource>_repository.go` |
+| HTTP handler | `internal/handler/<resource>_handler.go` |
+| DynamoDB tests + impl | `internal/dynamodb/<resource>_repository_test.go`, `<resource>_repository.go` |
+| Wiring | `internal/app/wire.go`; smoke test in `internal/app/wire_test.go` |
+| AWS resources | `template.yml` |
+| Error mapping (if needed) | `internal/domain/errors.go`, `internal/platform/errors.go` |
+| API docs | `README.md` (this file) |
 
 Run `make test` before opening a PR.
