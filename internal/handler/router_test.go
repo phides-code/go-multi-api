@@ -4,6 +4,7 @@ package handler_test
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"net/http"
 	"testing"
 
@@ -24,6 +25,24 @@ type stubResourceHandler struct{}
 
 func (stubResourceHandler) Handle(_ context.Context, _ events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	return platform.SuccessResponse(http.StatusOK, map[string]bool{"dispatched": true})
+}
+
+func assertEnvelopeShape(t *testing.T, body string) {
+	t.Helper()
+
+	var keys map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(body), &keys); err != nil {
+		t.Fatalf("unmarshal body: %v", err)
+	}
+
+	for _, k := range []string{"data", "error"} {
+		if _, ok := keys[k]; !ok {
+			t.Fatalf("missing top-level key %q; got %v", k, maps.Keys(keys))
+		}
+	}
+	if len(keys) != 2 {
+		t.Fatalf("body has %d top-level keys %v, want exactly data and error", len(keys), maps.Keys(keys))
+	}
 }
 
 func TestRouterDispatchesBananas(t *testing.T) {
@@ -217,4 +236,43 @@ func TestRouterDispatchesRegisteredPrefix(t *testing.T) {
 	if dispatched, _ := data["dispatched"].(bool); !dispatched {
 		t.Fatalf("data[dispatched] = %v, want true", data["dispatched"])
 	}
+}
+
+func TestRouterResponseEnvelopeShape(t *testing.T) {
+	t.Parallel()
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+
+		router := handler.NewRouterWithCFTToken(platform.NewLogger(), testCFTToken)
+		router.Register("apples", stubResourceHandler{})
+
+		resp, err := router.Handle(context.Background(), events.APIGatewayProxyRequest{
+			HTTPMethod: http.MethodGet,
+			Path:       "/apples",
+			Headers:    cfTokenHeaders(testCFTToken),
+		})
+		if err != nil {
+			t.Fatalf("handle: %v", err)
+		}
+
+		assertEnvelopeShape(t, resp.Body)
+	})
+
+	t.Run("error", func(t *testing.T) {
+		t.Parallel()
+
+		router := handler.NewRouterWithCFTToken(platform.NewLogger(), testCFTToken)
+
+		resp, err := router.Handle(context.Background(), events.APIGatewayProxyRequest{
+			HTTPMethod: http.MethodGet,
+			Path:       "/apples",
+			Headers:    cfTokenHeaders(testCFTToken),
+		})
+		if err != nil {
+			t.Fatalf("handle: %v", err)
+		}
+
+		assertEnvelopeShape(t, resp.Body)
+	})
 }
