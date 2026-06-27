@@ -1,11 +1,6 @@
 // Banana entity and validation rules for create/update payloads.
 package domain
 
-import (
-	"strings"
-	"unicode/utf8"
-)
-
 const (
 	MinContentLength = 1
 	MaxContentLength = 1000
@@ -26,24 +21,12 @@ type UpdateBananaInput struct {
 	Content string
 }
 
-func ValidateContent(content string) error {
-	if strings.TrimSpace(content) == "" {
-		return ErrValidationFailed
-	}
-	length := utf8.RuneCountInString(content)
-	if length < MinContentLength || length > MaxContentLength {
-		return ErrValidationFailed
-	}
-	return nil
-}
-
 func ValidateCreateInput(input CreateBananaInput) error {
-	return ValidateContent(input.Content)
+	return ValidateRequiredString(input.Content, MinContentLength, MaxContentLength)
 }
-
 func ValidateUpdateInput(input UpdateBananaInput) error {
 	if err := ValidateID(input.ID); err != nil {
 		return err
 	}
-	return ValidateContent(input.Content)
+	return ValidateRequiredString(input.Content, MinContentLength, MaxContentLength)
 }

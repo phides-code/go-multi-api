@@ -21,7 +21,7 @@ Shared concerns live in `internal/platform`: response formatting, error-to-statu
 ```
 cmd/lambda/main.go          Lambda entrypoint: wires repos, router, starts handler
 internal/
-  domain/                   Entities, validation, repository interfaces
+  domain/                   Entities, repository interfaces, shared validation (id.go, validation.go)
   dynamodb/                 DynamoDB repository implementations
   handler/                  HTTP handlers and router
   platform/                 Shared response, errors, logging, auth
@@ -30,6 +30,17 @@ Makefile                    build, test, local, deploy
 ```
 
 Bananas are the reference implementation. When adding a resource, copy the same layering: entity → repository interface → DynamoDB impl → handler → tests.
+
+**Shared domain helpers** (reuse across resources; do not duplicate in each entity file):
+
+| File | Purpose |
+| ---- | ------- |
+| `id.go` / `id_test.go` | `ValidateID`, `NewID` for UUID path params and server-generated ids |
+| `validation.go` / `validation_test.go` | `ValidateRequiredString` — non-blank after trim, rune length bounds |
+| `errors.go` | Sentinels mapped to HTTP in `internal/platform/errors.go` |
+| `pagination.go` | `ListOptions`, `DefaultListLimit` for cursor-based list endpoints |
+
+Per-resource files (`banana.go`, `banana_test.go`, …) hold entity shapes and **wire** shared helpers into `ValidateCreateInput` / `ValidateUpdateInput`. Test resource-specific rules there; test generic string rules once in `validation_test.go`.
 
 ## API contract
 
@@ -179,7 +190,10 @@ Use this when extending bananas (or any resource that already follows the templa
 
 ### 1. Domain tests
 
-In `internal/domain/banana_test.go`, add table-driven cases for each new rule (empty, too long, invalid enum, etc.).
+Pick tests by field type:
+
+- **Required string** (non-blank after trim, min/max rune length) — reuse `ValidateRequiredString` from `validation.go`. Edge cases (empty, whitespace, too long) are already covered in `validation_test.go`. Add cases there only if the new field uses **different** bounds than existing tests. In `banana_test.go`, add or extend `TestValidateCreateInput` / `TestValidateUpdateInput` with one wiring row (e.g. empty field fails) — not a full string matrix.
+- **Resource-specific rules** (enum, format, cross-field) — add table-driven cases in `internal/domain/banana_test.go` (e.g. `TestValidateRipeness`).
 
 Run `go test ./internal/domain/ -run TestValidate…` — tests should **fail** until step 2.
 
@@ -189,7 +203,9 @@ In `internal/domain/banana.go`:
 
 - Add the field to `Banana` with matching `json` and `dynamodbav` tags (attribute names must match what is stored in DynamoDB).
 - If clients may set the field on create or update, add it to `CreateBananaInput` / `UpdateBananaInput`.
-- Add or extend validation functions; call them from `ValidateCreateInput` / `ValidateUpdateInput`. Return `domain.ErrValidationFailed` when a rule fails.
+- Wire validation in `ValidateCreateInput` / `ValidateUpdateInput`:
+  - required strings — `ValidateRequiredString(input.Field, MinFieldLength, MaxFieldLength)` with length constants on the resource struct file;
+  - other rules — call a resource-specific `Validate*` function that returns `domain.ErrValidationFailed` on failure.
 
 If the field is **server-owned** (e.g. `createdOn`), do not add it to create/update inputs — set it in the handler or repository instead.
 
@@ -241,8 +257,9 @@ Run `make test` before opening a PR.
 
 | Step | File(s) |
 | ---- | ------- |
-| Domain tests | `internal/domain/banana_test.go` |
-| Struct + validation | `internal/domain/banana.go` |
+| Domain tests (resource-specific rules) | `internal/domain/banana_test.go` |
+| Domain tests (new string bounds only) | `internal/domain/validation_test.go` |
+| Struct + validation wiring | `internal/domain/banana.go` (calls `validation.go` for required strings) |
 | Handler tests | `internal/handler/banana_handler_test.go` |
 | JSON parsing | `internal/handler/banana_handler.go` |
 | DynamoDB tests (if updatable) | `internal/dynamodb/banana_repository_test.go` |
@@ -277,13 +294,13 @@ Tests should **fail** — handler, interface, and wiring do not exist yet.
 
 ### 2. Domain tests and entity
 
-Create `internal/domain/<resource>_test.go` with validation table cases.
+Create `internal/domain/<resource>_test.go` with table cases for **resource-specific** rules and thin wiring tests for `ValidateCreateInput` / `ValidateUpdateInput` (valid payload, one failure path per rule you compose).
 
 Create `internal/domain/<resource>.go`:
 
 - Struct with `json` and `dynamodbav` tags matching the DynamoDB item shape.
 - Input types for create/update payloads.
-- Validation functions (reuse `ValidateID` and `NewID` from `internal/domain/id.go` when using UUID keys).
+- `ValidateCreateInput` / `ValidateUpdateInput` that wire shared helpers (`ValidateID`, `ValidateRequiredString` from `id.go` and `validation.go`) and any resource-specific `Validate*` functions.
 
 Create `internal/domain/<resource>_repository.go`:
 
