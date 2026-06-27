@@ -28,11 +28,11 @@ type UpdateBananaInput struct {
 
 func ValidateContent(content string) error {
 	if strings.TrimSpace(content) == "" {
-		return ErrInvalidContent
+		return ErrValidationFailed
 	}
 	length := utf8.RuneCountInString(content)
 	if length < MinContentLength || length > MaxContentLength {
-		return ErrInvalidContent
+		return ErrValidationFailed
 	}
 	return nil
 }

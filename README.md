@@ -58,6 +58,22 @@ All responses are JSON with `Content-Type: application/json`:
 
 On success, `error` is null and `data` holds the result. On failure, `data` is null and `error` holds a short client-facing message.
 
+**Standard client errors** (all resources; mapped in `internal/platform/errors.go`):
+
+| HTTP status | `error` message | Domain sentinel | Typical cause |
+| ----------- | --------------- | --------------- | ------------- |
+| 400 | `invalid json` | `ErrInvalidJSON` | Malformed request body |
+| 400 | `invalid id` | `ErrInvalidID` | Path `{id}` is not a UUID |
+| 400 | `validation failed` | `ErrValidationFailed` | Field or business rule failed in domain validation |
+| 400 | `invalid cursor` | `ErrInvalidCursor` | Bad `?cursor=` on list |
+| 404 | `not found` | `ErrNotFound` | Item missing |
+| 409 | `already exists` | `ErrAlreadyExists` | Duplicate create |
+| 405 | `method not allowed` | `ErrMethodNotAllowed` | Unsupported HTTP method |
+| 401 | `unauthorized` | — | Missing or invalid `X-CF-Token` |
+| 500 | `internal server error` | — | Unexpected / infrastructure failure |
+
+Return `domain.ErrValidationFailed` from any `Validate*` function when a payload field fails a rule. Do not add per-field sentinels unless you also extend platform mapping and accept a new public `error` string.
+
 ### Bananas (`/bananas`)
 
 | Method   | Path            | Behavior                                     |
@@ -112,7 +128,7 @@ On success, `error` is null and `data` holds the result. On failure, `data` is n
 - `nextCursor` is omitted when there is no next page.
 - Pass `?cursor=<nextCursor>` to fetch the next page.
 
-Validation: `content` is required, 1–1000 Unicode characters. Path `{id}` values must be valid UUIDs.
+Validation: `content` is required, 1–1000 Unicode characters. Violations return 400 with `"validation failed"`. Path `{id}` values must be valid UUIDs (400 `"invalid id"`).
 
 ## Development
 
@@ -173,7 +189,7 @@ In `internal/domain/banana.go`:
 
 - Add the field to `Banana` with matching `json` and `dynamodbav` tags (attribute names must match what is stored in DynamoDB).
 - If clients may set the field on create or update, add it to `CreateBananaInput` / `UpdateBananaInput`.
-- Add or extend validation functions; call them from `ValidateCreateInput` / `ValidateUpdateInput`.
+- Add or extend validation functions; call them from `ValidateCreateInput` / `ValidateUpdateInput`. Return `domain.ErrValidationFailed` when a rule fails.
 
 If the field is **server-owned** (e.g. `createdOn`), do not add it to create/update inputs — set it in the handler or repository instead.
 
@@ -183,7 +199,7 @@ Domain tests from step 1 should now pass.
 
 In `internal/handler/banana_handler_test.go`:
 
-- Client-error row in `TestBananaHandlerClientErrors` (POST) and/or `TestBananaHandlerUpdate` (PUT) for each rule clients can hit.
+- Client-error row in `TestBananaHandlerClientErrors` (POST) and/or `TestBananaHandlerUpdate` (PUT) for each rule clients can hit — expect 400 and `"validation failed"` unless the failure is JSON or ID shape (see standard client errors above).
 - Success assertions in Create/Update/GetByID/List if the field changes responses; use `assertBananaDataKeys` when the wire shape changes.
 
 Run the new handler tests — they should **fail** until step 4.
@@ -350,9 +366,16 @@ Policies:
 
 Redeploy after changes: `make deploy`.
 
-### 7. Error mapping (if needed)
+### 7. Error mapping
 
-If the new resource introduces new client errors, add sentinel errors in `internal/domain/errors.go` and map them in `internal/platform/errors.go` (`HTTPStatusForError`, `ClientErrorMessage`).
+Most errors are already shared — see **Standard client errors** under [API contract](#api-contract).
+
+**When adding a resource or field:**
+
+- **Field / business rules** — return `domain.ErrValidationFailed` from validation; no platform change.
+- **New cross-cutting concern** (rare) — add a sentinel in `internal/domain/errors.go` and map status + client message in `internal/platform/errors.go` (`HTTPStatusForError`, `ClientErrorMessage`). Add a row to the standard errors table in this README.
+
+Per-field client messages (e.g. `"invalid ripeness"`) are not supported today; all validation failures surface as `"validation failed"`.
 
 ### Checklist (TDD order)
 
@@ -364,7 +387,7 @@ If the new resource introduces new client errors, add sentinel errors in `intern
 | DynamoDB tests + impl | `internal/dynamodb/<resource>_repository_test.go`, `<resource>_repository.go` |
 | Wiring | `internal/app/wire.go`; smoke test in `internal/app/wire_test.go` |
 | AWS resources | `template.yml` |
-| Error mapping (if needed) | `internal/domain/errors.go`, `internal/platform/errors.go` |
+| Error mapping (if needed) | Usually none — use `ErrValidationFailed`; extend `domain/errors.go` + `platform/errors.go` only for new cross-cutting errors |
 | API docs | `README.md` (this file) |
 
 Run `make test` before opening a PR.

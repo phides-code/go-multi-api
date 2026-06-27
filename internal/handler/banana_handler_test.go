@@ -325,7 +325,7 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 			method:       "POST",
 			body:         "{\"content\":\"\"}",
 			wantStatus:   http.StatusBadRequest,
-			wantErrorMsg: "invalid content",
+			wantErrorMsg: "validation failed",
 		},
 		{
 			name:         "PATCH unsupported method",
@@ -339,14 +339,14 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 			method:       "POST",
 			body:         `{"content":"   "}`,
 			wantStatus:   http.StatusBadRequest,
-			wantErrorMsg: "invalid content",
+			wantErrorMsg: "validation failed",
 		},
 		{
 			name:         "POST content too long",
 			method:       "POST",
 			body:         fmt.Sprintf(`{"content":%q}`, strings.Repeat("a", domain.MaxContentLength+1)),
 			wantStatus:   http.StatusBadRequest,
-			wantErrorMsg: "invalid content",
+			wantErrorMsg: "validation failed",
 		},
 	}
 
@@ -572,7 +572,7 @@ func TestBananaHandlerUpdate(t *testing.T) {
 			body:         `{"content":""}`,
 			wantStatus:   http.StatusBadRequest,
 			wantBanana:   nil,
-			wantErrorMsg: "invalid content",
+			wantErrorMsg: "validation failed",
 			setupRepo:    func(pathID string) *mockBananaRepository { return stubRepo() },
 		},
 		{
@@ -614,7 +614,7 @@ func TestBananaHandlerUpdate(t *testing.T) {
 			body:         `{"content":"   "}`,
 			wantStatus:   http.StatusBadRequest,
 			wantBanana:   nil,
-			wantErrorMsg: "invalid content",
+			wantErrorMsg: "validation failed",
 			setupRepo:    func(pathID string) *mockBananaRepository { return stubRepo() },
 		},
 		{
@@ -623,7 +623,7 @@ func TestBananaHandlerUpdate(t *testing.T) {
 			body:         fmt.Sprintf(`{"content":%q}`, strings.Repeat("a", domain.MaxContentLength+1)),
 			wantStatus:   http.StatusBadRequest,
 			wantBanana:   nil,
-			wantErrorMsg: "invalid content",
+			wantErrorMsg: "validation failed",
 			setupRepo:    func(pathID string) *mockBananaRepository { return stubRepo() },
 		},
 	}

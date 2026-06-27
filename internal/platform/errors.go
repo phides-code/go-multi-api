@@ -11,7 +11,7 @@ import (
 func HTTPStatusForError(err error) int {
 	switch {
 	case errors.Is(err, domain.ErrInvalidID),
-		errors.Is(err, domain.ErrInvalidContent),
+		errors.Is(err, domain.ErrValidationFailed),
 		errors.Is(err, domain.ErrInvalidJSON),
 		errors.Is(err, domain.ErrInvalidCursor):
 		return http.StatusBadRequest
@@ -30,8 +30,8 @@ func ClientErrorMessage(err error) string {
 	switch {
 	case errors.Is(err, domain.ErrInvalidID):
 		return "invalid id"
-	case errors.Is(err, domain.ErrInvalidContent):
-		return "invalid content"
+	case errors.Is(err, domain.ErrValidationFailed):
+		return "validation failed"
 	case errors.Is(err, domain.ErrInvalidJSON):
 		return "invalid json"
 	case errors.Is(err, domain.ErrNotFound):

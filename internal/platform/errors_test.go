@@ -28,10 +28,10 @@ func TestErrorMapping(t *testing.T) {
 			wantClient: true,
 		},
 		{
-			name:       "invalid content",
-			err:        domain.ErrInvalidContent,
+			name:       "validation failed",
+			err:        domain.ErrValidationFailed,
 			wantStatus: http.StatusBadRequest,
-			wantMsg:    "invalid content",
+			wantMsg:    "validation failed",
 			wantClient: true,
 		},
 		{
