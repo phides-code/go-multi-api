@@ -20,8 +20,8 @@ func (stubBananaRepo) Create(_ context.Context, _ domain.Banana) (domain.Banana,
 func (stubBananaRepo) GetByID(_ context.Context, _ string) (domain.Banana, error) {
 	return domain.Banana{}, nil
 }
-func (stubBananaRepo) List(_ context.Context, _ domain.ListOptions) (domain.Page, error) {
-	return domain.Page{}, nil
+func (stubBananaRepo) List(_ context.Context, _ domain.ListOptions) (domain.BananaPage, error) {
+	return domain.BananaPage{}, nil
 }
 func (stubBananaRepo) Update(_ context.Context, _ domain.Banana) (domain.Banana, error) {
 	return domain.Banana{}, nil

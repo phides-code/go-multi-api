@@ -48,7 +48,7 @@ func decodeBananaData(t *testing.T, envelope platform.APIResponse) domain.Banana
 	return banana
 }
 
-func decodePageData(t *testing.T, envelope platform.APIResponse) domain.Page {
+func decodePageData(t *testing.T, envelope platform.APIResponse) domain.BananaPage {
 	t.Helper()
 	if envelope.Error != nil {
 		t.Fatalf("unexpected error: %s", *envelope.Error)
@@ -57,7 +57,7 @@ func decodePageData(t *testing.T, envelope platform.APIResponse) domain.Page {
 	if err != nil {
 		t.Fatalf("marshal data: %v", err)
 	}
-	var page domain.Page
+	var page domain.BananaPage
 	if err := json.Unmarshal(data, &page); err != nil {
 		t.Fatalf("unmarshal page: %v", err)
 	}

@@ -78,7 +78,7 @@ func (r *BananaRepository) GetByID(ctx context.Context, id string) (domain.Banan
 	return banana, nil
 }
 
-func (r *BananaRepository) List(ctx context.Context, opts domain.ListOptions) (domain.Page, error) {
+func (r *BananaRepository) List(ctx context.Context, opts domain.ListOptions) (domain.BananaPage, error) {
 	limit := opts.Limit
 	if limit <= 0 {
 		limit = domain.DefaultListLimit
@@ -92,30 +92,30 @@ func (r *BananaRepository) List(ctx context.Context, opts domain.ListOptions) (d
 	if opts.Cursor != "" {
 		startKey, err := decodeCursor(opts.Cursor)
 		if err != nil {
-			return domain.Page{}, domain.ErrInvalidCursor
+			return domain.BananaPage{}, domain.ErrInvalidCursor
 		}
 		input.ExclusiveStartKey = startKey
 	}
 
 	out, err := r.client.Scan(ctx, input)
 	if err != nil {
-		return domain.Page{}, fmt.Errorf("scan items: %w", err)
+		return domain.BananaPage{}, fmt.Errorf("scan items: %w", err)
 	}
 
 	items := make([]domain.Banana, 0, len(out.Items))
 	for _, item := range out.Items {
 		var banana domain.Banana
 		if err := attributevalue.UnmarshalMap(item, &banana); err != nil {
-			return domain.Page{}, fmt.Errorf("unmarshal banana: %w", err)
+			return domain.BananaPage{}, fmt.Errorf("unmarshal banana: %w", err)
 		}
 		items = append(items, banana)
 	}
 
-	page := domain.Page{Items: items}
+	page := domain.BananaPage{Items: items}
 	if out.LastEvaluatedKey != nil {
 		page.NextCursor, err = encodeCursor(out.LastEvaluatedKey)
 		if err != nil {
-			return domain.Page{}, fmt.Errorf("encode cursor: %w", err)
+			return domain.BananaPage{}, fmt.Errorf("encode cursor: %w", err)
 		}
 	}
 

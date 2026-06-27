@@ -413,8 +413,8 @@ func TestBananaHandlerList(t *testing.T) {
 			wantNextCursor: nextCursor,
 			setupRepo: func() *mockBananaRepository {
 				return &mockBananaRepository{
-					listFn: func(_ context.Context, opts domain.ListOptions) (domain.Page, error) {
-						return domain.Page{
+					listFn: func(_ context.Context, opts domain.ListOptions) (domain.BananaPage, error) {
+						return domain.BananaPage{
 							Items:      wantItems,
 							NextCursor: nextCursor,
 						}, nil
@@ -429,11 +429,11 @@ func TestBananaHandlerList(t *testing.T) {
 			queryCursor: nextCursor,
 			setupRepo: func() *mockBananaRepository {
 				return &mockBananaRepository{
-					listFn: func(_ context.Context, opts domain.ListOptions) (domain.Page, error) {
+					listFn: func(_ context.Context, opts domain.ListOptions) (domain.BananaPage, error) {
 						if opts.Cursor != nextCursor {
-							return domain.Page{}, errors.New("wrong cursor")
+							return domain.BananaPage{}, errors.New("wrong cursor")
 						}
-						return domain.Page{Items: []domain.Banana{page2Item}}, nil
+						return domain.BananaPage{Items: []domain.Banana{page2Item}}, nil
 					},
 				}
 			},
@@ -444,8 +444,8 @@ func TestBananaHandlerList(t *testing.T) {
 			wantErrorMsg: "internal server error",
 			setupRepo: func() *mockBananaRepository {
 				return &mockBananaRepository{
-					listFn: func(_ context.Context, _ domain.ListOptions) (domain.Page, error) {
-						return domain.Page{}, errors.New("db down")
+					listFn: func(_ context.Context, _ domain.ListOptions) (domain.BananaPage, error) {
+						return domain.BananaPage{}, errors.New("db down")
 					},
 				}
 			},
@@ -457,8 +457,8 @@ func TestBananaHandlerList(t *testing.T) {
 			queryCursor:  "!!!not-base64!!!",
 			setupRepo: func() *mockBananaRepository {
 				return &mockBananaRepository{
-					listFn: func(_ context.Context, _ domain.ListOptions) (domain.Page, error) {
-						return domain.Page{}, domain.ErrInvalidCursor
+					listFn: func(_ context.Context, _ domain.ListOptions) (domain.BananaPage, error) {
+						return domain.BananaPage{}, domain.ErrInvalidCursor
 					},
 				}
 			},

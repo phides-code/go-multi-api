@@ -53,7 +53,7 @@ func TestRouterDispatchesBananas(t *testing.T) {
 		getFn: func(_ context.Context, gotID string) (domain.Banana, error) {
 			return domain.Banana{ID: gotID, Content: "found"}, nil
 		},
-		listFn:   func(_ context.Context, _ domain.ListOptions) (domain.Page, error) { return domain.Page{}, nil },
+		listFn:   func(_ context.Context, _ domain.ListOptions) (domain.BananaPage, error) { return domain.BananaPage{}, nil },
 		createFn: func(_ context.Context, banana domain.Banana) (domain.Banana, error) { return banana, nil },
 		updateFn: func(_ context.Context, banana domain.Banana) (domain.Banana, error) { return banana, nil },
 		deleteFn: func(_ context.Context, _ string) (domain.Banana, error) { return domain.Banana{}, nil },
@@ -151,7 +151,7 @@ func TestRouterSkipsCFTTokenUnderSAMLocal(t *testing.T) {
 		getFn: func(_ context.Context, gotID string) (domain.Banana, error) {
 			return domain.Banana{ID: gotID, Content: "found"}, nil
 		},
-		listFn:   func(_ context.Context, _ domain.ListOptions) (domain.Page, error) { return domain.Page{}, nil },
+		listFn:   func(_ context.Context, _ domain.ListOptions) (domain.BananaPage, error) { return domain.BananaPage{}, nil },
 		createFn: func(_ context.Context, banana domain.Banana) (domain.Banana, error) { return banana, nil },
 		updateFn: func(_ context.Context, banana domain.Banana) (domain.Banana, error) { return banana, nil },
 		deleteFn: func(_ context.Context, _ string) (domain.Banana, error) { return domain.Banana{}, nil },

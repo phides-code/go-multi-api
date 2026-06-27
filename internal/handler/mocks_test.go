@@ -10,7 +10,7 @@ import (
 type mockBananaRepository struct {
 	createFn func(ctx context.Context, banana domain.Banana) (domain.Banana, error)
 	getFn    func(ctx context.Context, id string) (domain.Banana, error)
-	listFn   func(ctx context.Context, opts domain.ListOptions) (domain.Page, error)
+	listFn   func(ctx context.Context, opts domain.ListOptions) (domain.BananaPage, error)
 	updateFn func(ctx context.Context, banana domain.Banana) (domain.Banana, error)
 	deleteFn func(ctx context.Context, id string) (domain.Banana, error)
 }
@@ -23,7 +23,7 @@ func (m *mockBananaRepository) GetByID(ctx context.Context, id string) (domain.B
 	return m.getFn(ctx, id)
 }
 
-func (m *mockBananaRepository) List(ctx context.Context, opts domain.ListOptions) (domain.Page, error) {
+func (m *mockBananaRepository) List(ctx context.Context, opts domain.ListOptions) (domain.BananaPage, error) {
 	return m.listFn(ctx, opts)
 }
 
@@ -43,8 +43,8 @@ func stubRepo() *mockBananaRepository {
 		getFn: func(_ context.Context, id string) (domain.Banana, error) {
 			return domain.Banana{}, nil
 		},
-		listFn: func(_ context.Context, opts domain.ListOptions) (domain.Page, error) {
-			return domain.Page{}, nil
+		listFn: func(_ context.Context, opts domain.ListOptions) (domain.BananaPage, error) {
+			return domain.BananaPage{}, nil
 		},
 		updateFn: func(_ context.Context, banana domain.Banana) (domain.Banana, error) {
 			return domain.Banana{}, nil
@@ -57,11 +57,11 @@ func stubRepo() *mockBananaRepository {
 
 func listRepo(items []domain.Banana) *mockBananaRepository {
 	return &mockBananaRepository{
-		listFn: func(_ context.Context, opts domain.ListOptions) (domain.Page, error) {
+		listFn: func(_ context.Context, opts domain.ListOptions) (domain.BananaPage, error) {
 			if opts.Limit != domain.DefaultListLimit {
-				return domain.Page{}, errors.New("wrong limit")
+				return domain.BananaPage{}, errors.New("wrong limit")
 			}
-			return domain.Page{Items: items}, nil
+			return domain.BananaPage{Items: items}, nil
 		},
 	}
 }
