@@ -71,12 +71,16 @@ func (h *BananaHandler) getByID(ctx context.Context, id string) (events.APIGatew
 func (h *BananaHandler) create(ctx context.Context, body string) (events.APIGatewayProxyResponse, error) {
 	var payload struct {
 		Content string `json:"content"`
+		Variety string `json:"variety"`
 	}
 	if err := json.Unmarshal([]byte(body), &payload); err != nil {
 		return h.errorResponse(ctx, domain.ErrInvalidJSON, "create banana")
 	}
 
-	input := domain.CreateBananaInput{Content: payload.Content}
+	input := domain.CreateBananaInput{
+		Content: payload.Content,
+		Variety: payload.Variety,
+	}
 	if err := domain.ValidateCreateInput(input); err != nil {
 		return h.errorResponse(ctx, err, "create banana")
 	}
@@ -84,6 +88,7 @@ func (h *BananaHandler) create(ctx context.Context, body string) (events.APIGate
 	banana := domain.Banana{
 		ID:        domain.NewID(),
 		Content:   payload.Content,
+		Variety:   payload.Variety,
 		CreatedOn: uint64(time.Now().UnixMilli()),
 	}
 
@@ -102,12 +107,17 @@ func (h *BananaHandler) update(ctx context.Context, id, body string) (events.API
 
 	var payload struct {
 		Content string `json:"content"`
+		Variety string `json:"variety"`
 	}
 	if err := json.Unmarshal([]byte(body), &payload); err != nil {
 		return h.errorResponse(ctx, domain.ErrInvalidJSON, "update banana")
 	}
 
-	input := domain.UpdateBananaInput{ID: id, Content: payload.Content}
+	input := domain.UpdateBananaInput{
+		ID:      id,
+		Content: payload.Content,
+		Variety: payload.Variety,
+	}
 	if err := domain.ValidateUpdateInput(input); err != nil {
 		return h.errorResponse(ctx, err, "update banana")
 	}
@@ -115,6 +125,7 @@ func (h *BananaHandler) update(ctx context.Context, id, body string) (events.API
 	updated, err := h.repo.Update(ctx, domain.Banana{
 		ID:      id,
 		Content: payload.Content,
+		Variety: payload.Variety,
 	})
 	if err != nil {
 		return h.errorResponse(ctx, err, "update banana")

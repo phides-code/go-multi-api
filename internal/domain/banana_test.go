@@ -16,8 +16,9 @@ func TestValidateCreateInput(t *testing.T) {
 		input   domain.CreateBananaInput
 		wantErr bool
 	}{
-		{name: "valid", input: domain.CreateBananaInput{Content: "hello"}, wantErr: false},
+		{name: "valid", input: domain.CreateBananaInput{Content: "hello", Variety: "cavendish"}, wantErr: false},
 		{name: "empty content", input: domain.CreateBananaInput{Content: ""}, wantErr: true},
+		{name: "empty variety", input: domain.CreateBananaInput{Content: "hello", Variety: ""}, wantErr: true},
 	}
 
 	for _, tt := range tests {
@@ -46,9 +47,10 @@ func TestValidateUpdateInput(t *testing.T) {
 		input   domain.UpdateBananaInput
 		wantErr bool
 	}{
-		{name: "valid", input: domain.UpdateBananaInput{ID: validID, Content: "hello"}, wantErr: false},
+		{name: "valid", input: domain.UpdateBananaInput{ID: validID, Content: "hello", Variety: "cavendish"}, wantErr: false},
 		{name: "invalid id", input: domain.UpdateBananaInput{ID: "bad", Content: "hello"}, wantErr: true},
 		{name: "empty content", input: domain.UpdateBananaInput{ID: validID, Content: ""}, wantErr: true},
+		{name: "empty variety", input: domain.UpdateBananaInput{ID: validID, Content: "hello", Variety: ""}, wantErr: true},
 	}
 
 	for _, tt := range tests {

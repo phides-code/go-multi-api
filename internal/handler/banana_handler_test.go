@@ -27,10 +27,11 @@ func TestBananaHandlerCreate(t *testing.T) {
 		wantStatus   int
 		wantErrorMsg string
 		wantContent  string
+		wantVariety  string
 	}{
 		{
 			name: "success",
-			body: `{"content":"ripe"}`,
+			body: `{"content":"ripe","variety":"cavendish"}`,
 			setupRepo: func() *mockBananaRepository {
 				return &mockBananaRepository{
 					createFn: func(_ context.Context, banana domain.Banana) (domain.Banana, error) {
@@ -40,10 +41,11 @@ func TestBananaHandlerCreate(t *testing.T) {
 			},
 			wantStatus:  http.StatusCreated,
 			wantContent: "ripe",
+			wantVariety: "cavendish",
 		},
 		{
 			name: "repo failure",
-			body: `{"content":"ripe"}`,
+			body: `{"content":"ripe","variety":"cavendish"}`,
 			setupRepo: func() *mockBananaRepository {
 				return &mockBananaRepository{
 					createFn: func(_ context.Context, _ domain.Banana) (domain.Banana, error) {
@@ -83,6 +85,10 @@ func TestBananaHandlerCreate(t *testing.T) {
 			if banana.Content != tt.wantContent {
 				t.Fatalf("content = %q, want %q", banana.Content, tt.wantContent)
 			}
+			if banana.Variety != tt.wantVariety {
+				t.Fatalf("variety = %q, want %q", banana.Variety, tt.wantVariety)
+			}
+
 			if err := domain.ValidateID(banana.ID); err != nil {
 				t.Fatalf("expected generated uuid: %v", err)
 			}
@@ -344,7 +350,14 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 		{
 			name:         "POST content too long",
 			method:       "POST",
-			body:         fmt.Sprintf(`{"content":%q}`, strings.Repeat("a", domain.MaxContentLength+1)),
+			body:         fmt.Sprintf(`{"content":%q}`, strings.Repeat("a", domain.MaxStringLength+1)),
+			wantStatus:   http.StatusBadRequest,
+			wantErrorMsg: "validation failed",
+		},
+		{
+			name:         "POST empty variety",
+			method:       "POST",
+			body:         `{"content":"hello","variety":""}`,
 			wantStatus:   http.StatusBadRequest,
 			wantErrorMsg: "validation failed",
 		},
@@ -517,11 +530,13 @@ func TestBananaHandlerUpdate(t *testing.T) {
 
 	validUuid := uuid.NewString()
 	validContent := "valid content"
-	validUpdateBody := fmt.Sprintf(`{"content":%q}`, validContent)
+	validVariety := "cavendish"
 
+	validUpdateBody := fmt.Sprintf(`{"content":%q,"variety":%q}`, validContent, validVariety)
 	updatedBanana := domain.Banana{
 		ID:      validUuid,
 		Content: validContent,
+		Variety: validVariety,
 	}
 
 	tests := []struct {
@@ -620,7 +635,16 @@ func TestBananaHandlerUpdate(t *testing.T) {
 		{
 			name:         "PUT content too long",
 			pathID:       validUuid,
-			body:         fmt.Sprintf(`{"content":%q}`, strings.Repeat("a", domain.MaxContentLength+1)),
+			body:         fmt.Sprintf(`{"content":%q}`, strings.Repeat("a", domain.MaxStringLength+1)),
+			wantStatus:   http.StatusBadRequest,
+			wantBanana:   nil,
+			wantErrorMsg: "validation failed",
+			setupRepo:    func(pathID string) *mockBananaRepository { return stubRepo() },
+		},
+		{
+			name:         "PUT empty variety",
+			pathID:       validUuid,
+			body:         fmt.Sprintf(`{"content":%q,"variety":""}`, validContent),
 			wantStatus:   http.StatusBadRequest,
 			wantBanana:   nil,
 			wantErrorMsg: "validation failed",
