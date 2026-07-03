@@ -128,16 +128,11 @@ func (r *BananaRepository) Update(ctx context.Context, banana domain.Banana) (do
 		Key: map[string]types.AttributeValue{
 			"id": &types.AttributeValueMemberS{Value: banana.ID},
 		},
-		UpdateExpression: aws.String("SET #content = :content, #variety = :variety"),
-
-		ConditionExpression: aws.String("attribute_exists(id)"),
-		ExpressionAttributeNames: map[string]string{
-			"#content": "content",
-			"#variety": "variety",
-		},
+		UpdateExpression:         aws.String("SET #content = :content"),
+		ConditionExpression:      aws.String("attribute_exists(id)"),
+		ExpressionAttributeNames: map[string]string{"#content": "content"},
 		ExpressionAttributeValues: map[string]types.AttributeValue{
 			":content": &types.AttributeValueMemberS{Value: banana.Content},
-			":variety": &types.AttributeValueMemberS{Value: banana.Variety},
 		},
 		ReturnValues: types.ReturnValueAllNew,
 	})

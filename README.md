@@ -63,7 +63,7 @@ Return `ErrValidationFailed` from validation; no per-field error strings unless 
 | `GET` | `/bananas` | List (paginated) |
 | `GET` | `/bananas/{id}` | Get by UUID |
 | `POST` | `/bananas` | Create; server sets `id`, `createdOn` |
-| `PUT` | `/bananas/{id}` | Update `content` and `variety`; 404 if missing |
+| `PUT` | `/bananas/{id}` | Update `content`; 404 if missing |
 | `DELETE` | `/bananas/{id}` | Hard delete; returns deleted item |
 
 **Item shape** (single banana in create/get/update/delete responses; list `items` use the same fields):
@@ -72,18 +72,17 @@ Return `ErrValidationFailed` from validation; no per-field error strings unless 
 {
   "id": "uuid",
   "content": "string",
-  "variety": "string",
   "createdOn": 1717516800000
 }
 ```
 
-**Create body** (POST): `{ "content": "string", "variety": "string" }`
+**Create body** (POST): `{ "content": "string" }`
 
-**Update body** (PUT): `{ "content": "string", "variety": "string" }`
+**Update body** (PUT): `{ "content": "string" }`
 
 **List** (`GET /bananas`): `data.items` (array of item shape), optional `data.nextCursor`. Up to 50 per page (`domain.DefaultListLimit`). Next page: `?cursor=<nextCursor>`.
 
-**Validation:** `content` and `variety` required on create/update, 1–1000 Unicode characters each → 400 `validation failed`. Path `{id}` must be UUID → 400 `invalid id`.
+**Validation:** `content` required on create/update, 1–1000 Unicode characters → 400 `validation failed`. Path `{id}` must be UUID → 400 `invalid id`.
 
 ## Development
 

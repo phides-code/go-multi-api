@@ -11,7 +11,7 @@ import (
 )
 
 // assertUpdateSets checks that UpdateItem SETs exactly the given string attributes.
-// Attribute names are sorted when building the expected UpdateExpression (content before variety).
+// Attribute names are sorted when building the expected UpdateExpression.
 func assertUpdateSets(t *testing.T, params *awsdynamodb.UpdateItemInput, want map[string]string) {
 	t.Helper()
 

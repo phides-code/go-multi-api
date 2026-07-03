@@ -222,12 +222,7 @@ func TestBananaRepositoryDelete(t *testing.T) {
 func TestBananaRepositoryUpdate(t *testing.T) {
 	t.Parallel()
 
-	updatedBanana := domain.Banana{
-		ID:        uuid.NewString(),
-		Content:   "updated",
-		Variety:   "cavendish",
-		CreatedOn: 12345,
-	}
+	updatedBanana := domain.Banana{ID: uuid.NewString(), Content: "updated", CreatedOn: 12345}
 	errSDK := errors.New("dynamo unavailable")
 
 	item, err := attributevalue.MarshalMap(updatedBanana)
@@ -248,7 +243,6 @@ func TestBananaRepositoryUpdate(t *testing.T) {
 					updateItemFn: func(_ context.Context, params *awsdynamodb.UpdateItemInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.UpdateItemOutput, error) {
 						assertUpdateSets(t, params, map[string]string{
 							"content": updatedBanana.Content,
-							"variety": updatedBanana.Variety,
 						})
 						return &awsdynamodb.UpdateItemOutput{Attributes: item}, nil
 					},
