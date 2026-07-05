@@ -20,7 +20,7 @@ internal/
   handler/                  handlers, router (+ assert_test.go shared envelope helpers; banana_assert_test.go, banana_mocks_test.go)
   platform/                 response envelope, errors, logging, auth
   app/wire.go               construct repos, Register handlers
-  testutil/                 shared test constants (e.g. TestCFTToken for router/wire tests)
+  testutil/                 shared test constants and fixtures (TestCFTToken, TestBananaContent, ListBananaPage)
 template.yml                SAM: API Gateway, Lambda, tables
 Makefile                    build, test, local, deploy
 ```

@@ -23,11 +23,13 @@ Full walkthrough: [Adding a new table](../README.md#adding-a-new-table).
 | `internal/handler/<resource>_handler_test.go` | `internal/handler/banana_handler_test.go` — **start here** |
 | `internal/handler/<resource>_assert_test.go` | `internal/handler/banana_assert_test.go` — decode/assert wire shape |
 | `internal/handler/<resource>_mocks_test.go` | `internal/handler/banana_mocks_test.go` — mock repo helpers |
+| `internal/handler/<resource>_fixtures_test.go` | `internal/handler/banana_fixtures_test.go` — package-local fixture helpers (e.g. `existingBananaFixture`) |
 | `internal/domain/<resource>_test.go` | `internal/domain/banana_test.go` |
 | `internal/domain/<resource>.go` | `internal/domain/banana.go` |
 | `internal/domain/<resource>_repository.go` | `internal/domain/banana_repository.go` |
 | `internal/handler/<resource>_handler.go` | `internal/handler/banana_handler.go` |
 | `internal/dynamodb/<resource>_repository_test.go` | `internal/dynamodb/banana_repository_test.go` |
+| `internal/dynamodb/<resource>_fixtures_test.go` | `internal/dynamodb/banana_fixtures_test.go` — e.g. `storedBananaFixture` for Get/Delete mocks |
 | `internal/dynamodb/<resource>_assert_test.go` | `internal/dynamodb/banana_assert_test.go` — `assert<Resource>RepoResult`, `assert<Resource>PutItem` |
 | `internal/dynamodb/<resource>_repository.go` | `internal/dynamodb/banana_repository.go` |
 
@@ -44,6 +46,7 @@ Full walkthrough: [Adding a new table](../README.md#adding-a-new-table).
 | `internal/domain/id.go` | `ValidateID`, `NewID` (UUID keys) |
 | `internal/domain/pagination.go` | `ListOptions`, `DefaultListLimit` (cursor-based list) |
 | `internal/testutil/consts.go` | Cross-package test constants (e.g. `TestCFTToken` for `router_test.go` and `wire_test.go`) |
+| `internal/testutil/banana_fixtures.go` | Banana fixtures shared by handler and DynamoDB tests — **copy pattern** for new resources: `Test<Resource>Content`, `BananaWithID` → `<Resource>WithID`, `BananaCreateBody`, `ListBananaPage` → `List<Resource>Page` |
 
 ## Files to edit
 
@@ -79,11 +82,19 @@ No shared-type refactor required — shared domain/platform code stays resource-
 ## DynamoDB test patterns (copy from banana)
 
 - Table field: `setupMock func(t *testing.T) *mockDynamoClient` — pass subtest `t` at `tt.setupMock(t)`; use named `t` in mocks that call `t.Error` / assert helpers.
+- Persisted row fixture: `storedBananaFixture(t)` in `<resource>_fixtures_test.go` — ID-linked entity + marshaled DynamoDB item for Get/Delete mocks.
 - Single-entity methods (Get/Create/Update/Delete): `assertBananaRepoResult(t, "<Op>", got, err, want, wantErr)`.
 - Create success mock: `assertBananaPutItem(t, params, want)`.
 - Update success mock: `assertUpdateSets(t, params, map[string]string{…})`.
 - List: assert returned items/cursors in the subtest loop (no `assertBananaRepoResult` — returns a page).
 - Validation bounds: resource-scoped constants in `<resource>.go` (see `BananaMinContentLength` / `BananaMaxContentLength`).
+
+## Handler test fixtures (copy from banana)
+
+- Canonical valid content: `testutil.TestBananaContent` — use for create/get/update/delete success paths and matching JSON via `testutil.BananaCreateBody`.
+- ID-linked entity: `existingBananaFixture()` in `<resource>_fixtures_test.go` for get/update/delete table setup.
+- List pagination labels: `testutil.ListBananaPage(withTimestamps)` — handler tests use `false`; DynamoDB list tests use `true` when asserting `createdOn`.
+- Domain validation tests may use any non-empty string (e.g. `"hello"`) — they test rules, not the HTTP narrative.
 
 ## Before PR
 

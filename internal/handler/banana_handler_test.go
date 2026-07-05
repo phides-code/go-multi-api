@@ -11,14 +11,16 @@ import (
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
-	"github.com/google/uuid"
 	"github.com/phides-code/go-multi-api/internal/domain"
 	"github.com/phides-code/go-multi-api/internal/handler"
 	"github.com/phides-code/go-multi-api/internal/platform"
+	"github.com/phides-code/go-multi-api/internal/testutil"
 )
 
 func TestBananaHandlerCreate(t *testing.T) {
 	t.Parallel()
+
+	validCreateBody := testutil.BananaCreateBody(testutil.TestBananaContent)
 
 	tests := []struct {
 		name         string
@@ -30,7 +32,7 @@ func TestBananaHandlerCreate(t *testing.T) {
 	}{
 		{
 			name: "success",
-			body: `{"content":"ripe"}`,
+			body: validCreateBody,
 			setupRepo: func() *mockBananaRepository {
 				return &mockBananaRepository{
 					createFn: func(_ context.Context, banana domain.Banana) (domain.Banana, error) {
@@ -39,11 +41,11 @@ func TestBananaHandlerCreate(t *testing.T) {
 				}
 			},
 			wantStatus:  http.StatusCreated,
-			wantContent: "ripe",
+			wantContent: testutil.TestBananaContent,
 		},
 		{
 			name: "repo failure",
-			body: `{"content":"ripe"}`,
+			body: validCreateBody,
 			setupRepo: func() *mockBananaRepository {
 				return &mockBananaRepository{
 					createFn: func(_ context.Context, _ domain.Banana) (domain.Banana, error) {
@@ -56,7 +58,7 @@ func TestBananaHandlerCreate(t *testing.T) {
 		},
 		{
 			name: "duplicate id",
-			body: `{"content":"ripe"}`,
+			body: validCreateBody,
 			setupRepo: func() *mockBananaRepository {
 				return &mockBananaRepository{
 					createFn: func(_ context.Context, _ domain.Banana) (domain.Banana, error) {
@@ -114,11 +116,7 @@ func TestBananaHandlerCreate(t *testing.T) {
 func TestBananaHandlerDelete(t *testing.T) {
 	t.Parallel()
 
-	validUuid := uuid.NewString()
-	deletedBanana := domain.Banana{
-		ID:      validUuid,
-		Content: "content",
-	}
+	validUuid, deletedBanana, _ := existingBananaFixture()
 
 	tests := []struct {
 		name         string
@@ -223,11 +221,7 @@ func TestBananaHandlerDelete(t *testing.T) {
 func TestBananaHandlerGetByID(t *testing.T) {
 	t.Parallel()
 
-	validUuid := uuid.NewString()
-	validBanana := domain.Banana{
-		ID:      validUuid,
-		Content: "valid content",
-	}
+	validUuid, validBanana, _ := existingBananaFixture()
 
 	tests := []struct {
 		name         string
@@ -410,11 +404,9 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 func TestBananaHandlerList(t *testing.T) {
 	t.Parallel()
 
-	bananaOne := domain.Banana{ID: uuid.NewString(), Content: "first"}
-	bananaTwo := domain.Banana{ID: uuid.NewString(), Content: "second"}
+	bananaOne, bananaTwo, page2Item := testutil.ListBananaPage(false)
 	wantItems := []domain.Banana{bananaOne, bananaTwo}
 	nextCursor := "abc123"
-	page2Item := domain.Banana{ID: uuid.NewString(), Content: "page2"}
 
 	tests := []struct {
 		name           string
@@ -551,14 +543,7 @@ func TestBananaHandlerList(t *testing.T) {
 func TestBananaHandlerUpdate(t *testing.T) {
 	t.Parallel()
 
-	validUuid := uuid.NewString()
-	validContent := "valid content"
-	validUpdateBody := fmt.Sprintf(`{"content":%q}`, validContent)
-
-	updatedBanana := domain.Banana{
-		ID:      validUuid,
-		Content: validContent,
-	}
+	validUuid, updatedBanana, validUpdateBody := existingBananaFixture()
 
 	tests := []struct {
 		name         string

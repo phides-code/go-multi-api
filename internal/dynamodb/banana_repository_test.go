@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/phides-code/go-multi-api/internal/domain"
 	ddb "github.com/phides-code/go-multi-api/internal/dynamodb"
+	"github.com/phides-code/go-multi-api/internal/testutil"
 )
 
 type mockDynamoClient struct {
@@ -59,14 +60,8 @@ func scanItems(t *testing.T, bananas []domain.Banana) []map[string]types.Attribu
 func TestBananaRepositoryGetByID(t *testing.T) {
 	t.Parallel()
 
-	validId := uuid.NewString()
-	validBanana := domain.Banana{ID: validId, Content: "ripe", CreatedOn: 12345}
+	validId, validBanana, item := storedBananaFixture(t)
 	errSDK := errors.New("dynamo unavailable")
-
-	item, err := attributevalue.MarshalMap(validBanana)
-	if err != nil {
-		t.Fatal(err)
-	}
 	tests := []struct {
 		name       string
 		setupMock  func(t *testing.T) *mockDynamoClient
@@ -125,14 +120,8 @@ func TestBananaRepositoryGetByID(t *testing.T) {
 func TestBananaRepositoryDelete(t *testing.T) {
 	t.Parallel()
 
-	validId := uuid.NewString()
-	validBanana := domain.Banana{ID: validId, Content: "ripe", CreatedOn: 12345}
+	validId, validBanana, item := storedBananaFixture(t)
 	errSDK := errors.New("dynamo unavailable")
-
-	item, err := attributevalue.MarshalMap(validBanana)
-	if err != nil {
-		t.Fatal(err)
-	}
 	tests := []struct {
 		name       string
 		setupMock  func(t *testing.T) *mockDynamoClient
@@ -323,8 +312,8 @@ func TestBananaRepositoryCreate(t *testing.T) {
 func TestBananaRepositoryList(t *testing.T) {
 	t.Parallel()
 
-	b1 := domain.Banana{ID: uuid.NewString(), Content: "first", CreatedOn: 1}
-	b2 := domain.Banana{ID: uuid.NewString(), Content: "second", CreatedOn: 2}
+	b1, b2, page2Banana := testutil.ListBananaPage(true)
+	page2 := []domain.Banana{page2Banana}
 
 	cursorID := uuid.NewString()
 	cursorRaw, err := json.Marshal(map[string]string{"id": cursorID})
@@ -333,11 +322,9 @@ func TestBananaRepositoryList(t *testing.T) {
 	}
 	inputCursor := base64.StdEncoding.EncodeToString(cursorRaw)
 
-	page2 := []domain.Banana{{ID: uuid.NewString(), Content: "page2", CreatedOn: 3}}
-	page2ScanItems := scanItems(t, page2)
-
 	wantItems := []domain.Banana{b1, b2}
 	scanOutputItems := scanItems(t, wantItems)
+	page2ScanItems := scanItems(t, page2)
 
 	tests := []struct {
 		name             string
