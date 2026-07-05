@@ -101,3 +101,26 @@ func TestErrorMapping(t *testing.T) {
 		})
 	}
 }
+
+func TestClientErrorMessageUsesDomainSentinelText(t *testing.T) {
+	t.Parallel()
+
+	sentinels := []error{
+		domain.ErrNotFound,
+		domain.ErrInvalidID,
+		domain.ErrValidationFailed,
+		domain.ErrInvalidJSON,
+		domain.ErrMethodNotAllowed,
+		domain.ErrAlreadyExists,
+		domain.ErrInvalidCursor,
+	}
+
+	for _, sentinel := range sentinels {
+		t.Run(sentinel.Error(), func(t *testing.T) {
+			t.Parallel()
+			if got := platform.ClientErrorMessage(sentinel); got != sentinel.Error() {
+				t.Errorf("ClientErrorMessage() = %q, want sentinel Error() = %q", got, sentinel.Error())
+			}
+		})
+	}
+}

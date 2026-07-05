@@ -1,4 +1,5 @@
 // Sentinel errors shared across domain, handlers, and HTTP response mapping.
+// Error() strings are the client-facing API messages (see platform.ClientErrorMessage).
 package domain
 
 import "errors"

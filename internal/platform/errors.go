@@ -8,43 +8,41 @@ import (
 	"github.com/phides-code/go-multi-api/internal/domain"
 )
 
+const internalServerErrorMessage = "internal server error"
+
+type clientErrorMapping struct {
+	sentinel error
+	status   int
+}
+
+// clientErrorMappings ties each domain sentinel to its HTTP status.
+// ClientErrorMessage uses sentinel.Error() so strings live only in domain/errors.go.
+var clientErrorMappings = []clientErrorMapping{
+	{domain.ErrInvalidID, http.StatusBadRequest},
+	{domain.ErrValidationFailed, http.StatusBadRequest},
+	{domain.ErrInvalidJSON, http.StatusBadRequest},
+	{domain.ErrInvalidCursor, http.StatusBadRequest},
+	{domain.ErrNotFound, http.StatusNotFound},
+	{domain.ErrAlreadyExists, http.StatusConflict},
+	{domain.ErrMethodNotAllowed, http.StatusMethodNotAllowed},
+}
+
 func HTTPStatusForError(err error) int {
-	switch {
-	case errors.Is(err, domain.ErrInvalidID),
-		errors.Is(err, domain.ErrValidationFailed),
-		errors.Is(err, domain.ErrInvalidJSON),
-		errors.Is(err, domain.ErrInvalidCursor):
-		return http.StatusBadRequest
-	case errors.Is(err, domain.ErrNotFound):
-		return http.StatusNotFound
-	case errors.Is(err, domain.ErrAlreadyExists):
-		return http.StatusConflict
-	case errors.Is(err, domain.ErrMethodNotAllowed):
-		return http.StatusMethodNotAllowed
-	default:
-		return http.StatusInternalServerError
+	for _, m := range clientErrorMappings {
+		if errors.Is(err, m.sentinel) {
+			return m.status
+		}
 	}
+	return http.StatusInternalServerError
 }
 
 func ClientErrorMessage(err error) string {
-	switch {
-	case errors.Is(err, domain.ErrInvalidID):
-		return "invalid id"
-	case errors.Is(err, domain.ErrValidationFailed):
-		return "validation failed"
-	case errors.Is(err, domain.ErrInvalidJSON):
-		return "invalid json"
-	case errors.Is(err, domain.ErrNotFound):
-		return "not found"
-	case errors.Is(err, domain.ErrAlreadyExists):
-		return "already exists"
-	case errors.Is(err, domain.ErrMethodNotAllowed):
-		return "method not allowed"
-	case errors.Is(err, domain.ErrInvalidCursor):
-		return "invalid cursor"
-	default:
-		return "internal server error"
+	for _, m := range clientErrorMappings {
+		if errors.Is(err, m.sentinel) {
+			return m.sentinel.Error()
+		}
 	}
+	return internalServerErrorMessage
 }
 
 func IsClientError(err error) bool {
