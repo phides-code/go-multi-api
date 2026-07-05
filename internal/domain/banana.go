@@ -2,8 +2,8 @@
 package domain
 
 const (
-	MinStringLength = 1
-	MaxStringLength = 1000
+	BananaMinContentLength = 1
+	BananaMaxContentLength = 1000
 )
 
 type Banana struct {
@@ -22,7 +22,7 @@ type UpdateBananaInput struct {
 }
 
 func validateBananaInput(content string) error {
-	if err := ValidateRequiredString(content, MinStringLength, MaxStringLength); err != nil {
+	if err := ValidateRequiredString(content, BananaMinContentLength, BananaMaxContentLength); err != nil {
 		return err
 	}
 	return nil

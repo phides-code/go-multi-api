@@ -6,14 +6,13 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/phides-code/go-multi-api/internal/domain"
 	"github.com/phides-code/go-multi-api/internal/platform"
 )
 
 func TestSuccessResponseEnvelope(t *testing.T) {
 	t.Parallel()
 
-	resp, err := platform.SuccessResponse(http.StatusOK, domain.Banana{ID: "id", Content: "c"})
+	resp, err := platform.SuccessResponse(http.StatusOK, map[string]string{"key": "value"})
 	if err != nil {
 		t.Fatalf("success response: %v", err)
 	}

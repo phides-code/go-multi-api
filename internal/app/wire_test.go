@@ -8,9 +8,8 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/phides-code/go-multi-api/internal/domain"
 	"github.com/phides-code/go-multi-api/internal/platform"
+	"github.com/phides-code/go-multi-api/internal/testutil"
 )
-
-const testCFTToken = "test-token"
 
 type stubBananaRepo struct{}
 
@@ -31,14 +30,14 @@ func (stubBananaRepo) Delete(_ context.Context, _ string) (domain.Banana, error)
 }
 
 func TestWiringSmokeGETBananas(t *testing.T) {
-	t.Setenv("AWS_CF_TOKEN", testCFTToken)
+	t.Setenv("AWS_CF_TOKEN", testutil.TestCFTToken)
 
 	router := newRouter(platform.NewLogger(), stubBananaRepo{})
 
 	resp, err := router.Handle(context.Background(), events.APIGatewayProxyRequest{
 		HTTPMethod: http.MethodGet,
 		Path:       "/bananas",
-		Headers:    map[string]string{"X-CF-Token": testCFTToken},
+		Headers:    map[string]string{"X-CF-Token": testutil.TestCFTToken},
 	})
 	if err != nil {
 		t.Fatalf("handle: %v", err)

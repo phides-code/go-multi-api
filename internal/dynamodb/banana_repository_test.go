@@ -69,13 +69,13 @@ func TestBananaRepositoryGetByID(t *testing.T) {
 	}
 	tests := []struct {
 		name       string
-		setupMock  func() *mockDynamoClient
+		setupMock  func(t *testing.T) *mockDynamoClient
 		wantBanana domain.Banana
 		wantErr    error
 	}{
 		{
 			name: "found",
-			setupMock: func() *mockDynamoClient {
+			setupMock: func(_ *testing.T) *mockDynamoClient {
 				return &mockDynamoClient{
 					getItemFn: func(_ context.Context, _ *awsdynamodb.GetItemInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.GetItemOutput, error) {
 						return &awsdynamodb.GetItemOutput{Item: item}, nil
@@ -87,7 +87,7 @@ func TestBananaRepositoryGetByID(t *testing.T) {
 		},
 		{
 			name: "not found",
-			setupMock: func() *mockDynamoClient {
+			setupMock: func(_ *testing.T) *mockDynamoClient {
 				return &mockDynamoClient{
 					getItemFn: func(_ context.Context, _ *awsdynamodb.GetItemInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.GetItemOutput, error) {
 						return &awsdynamodb.GetItemOutput{Item: nil}, nil
@@ -99,7 +99,7 @@ func TestBananaRepositoryGetByID(t *testing.T) {
 		},
 		{
 			name: "sdk error",
-			setupMock: func() *mockDynamoClient {
+			setupMock: func(_ *testing.T) *mockDynamoClient {
 				return &mockDynamoClient{
 					getItemFn: func(_ context.Context, _ *awsdynamodb.GetItemInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.GetItemOutput, error) {
 						return nil, errSDK
@@ -114,25 +114,10 @@ func TestBananaRepositoryGetByID(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			repo := ddb.NewBananaRepository(tt.setupMock())
+			repo := ddb.NewBananaRepository(tt.setupMock(t))
 			got, err := repo.GetByID(context.Background(), validId)
-			if tt.wantErr != nil {
-				if !errors.Is(err, tt.wantErr) {
-					t.Fatalf("err = %v, want %v", err, tt.wantErr)
-				}
-				if got != tt.wantBanana {
-					t.Fatalf("got %+v, want %+v", got, tt.wantBanana)
-				}
 
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("GetByID: %v", err)
-			}
-			if got != tt.wantBanana {
-				t.Fatalf("got %+v, want %+v", got, tt.wantBanana)
-			}
+			assertBananaRepoResult(t, "GetByID", got, err, tt.wantBanana, tt.wantErr)
 		})
 	}
 }
@@ -150,13 +135,13 @@ func TestBananaRepositoryDelete(t *testing.T) {
 	}
 	tests := []struct {
 		name       string
-		setupMock  func() *mockDynamoClient
+		setupMock  func(t *testing.T) *mockDynamoClient
 		wantBanana domain.Banana
 		wantErr    error
 	}{
 		{
 			name: "success",
-			setupMock: func() *mockDynamoClient {
+			setupMock: func(_ *testing.T) *mockDynamoClient {
 				return &mockDynamoClient{
 					deleteItemFn: func(_ context.Context, _ *awsdynamodb.DeleteItemInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.DeleteItemOutput, error) {
 						return &awsdynamodb.DeleteItemOutput{Attributes: item}, nil
@@ -168,7 +153,7 @@ func TestBananaRepositoryDelete(t *testing.T) {
 		},
 		{
 			name: "not found",
-			setupMock: func() *mockDynamoClient {
+			setupMock: func(_ *testing.T) *mockDynamoClient {
 				return &mockDynamoClient{
 					deleteItemFn: func(_ context.Context, _ *awsdynamodb.DeleteItemInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.DeleteItemOutput, error) {
 						return &awsdynamodb.DeleteItemOutput{Attributes: nil}, nil
@@ -180,7 +165,7 @@ func TestBananaRepositoryDelete(t *testing.T) {
 		},
 		{
 			name: "sdk error",
-			setupMock: func() *mockDynamoClient {
+			setupMock: func(_ *testing.T) *mockDynamoClient {
 				return &mockDynamoClient{
 					deleteItemFn: func(_ context.Context, _ *awsdynamodb.DeleteItemInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.DeleteItemOutput, error) {
 						return nil, errSDK
@@ -195,26 +180,10 @@ func TestBananaRepositoryDelete(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			repo := ddb.NewBananaRepository(tt.setupMock())
+			repo := ddb.NewBananaRepository(tt.setupMock(t))
 			got, err := repo.Delete(context.Background(), validId)
 
-			if tt.wantErr != nil {
-				if !errors.Is(err, tt.wantErr) {
-					t.Fatalf("err = %v, want %v", err, tt.wantErr)
-				}
-				if got != tt.wantBanana {
-					t.Fatalf("got %+v, want %+v", got, tt.wantBanana)
-				}
-
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("Delete: %v", err)
-			}
-			if got != tt.wantBanana {
-				t.Fatalf("got %+v, want %+v", got, tt.wantBanana)
-			}
+			assertBananaRepoResult(t, "Delete", got, err, tt.wantBanana, tt.wantErr)
 		})
 	}
 }
@@ -232,13 +201,13 @@ func TestBananaRepositoryUpdate(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		setupMock  func() *mockDynamoClient
+		setupMock  func(t *testing.T) *mockDynamoClient
 		wantBanana domain.Banana
 		wantErr    error
 	}{
 		{
 			name: "success",
-			setupMock: func() *mockDynamoClient {
+			setupMock: func(t *testing.T) *mockDynamoClient {
 				return &mockDynamoClient{
 					updateItemFn: func(_ context.Context, params *awsdynamodb.UpdateItemInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.UpdateItemOutput, error) {
 						assertUpdateSets(t, params, map[string]string{
@@ -253,7 +222,7 @@ func TestBananaRepositoryUpdate(t *testing.T) {
 		},
 		{
 			name: "not found",
-			setupMock: func() *mockDynamoClient {
+			setupMock: func(_ *testing.T) *mockDynamoClient {
 				return &mockDynamoClient{
 					updateItemFn: func(_ context.Context, _ *awsdynamodb.UpdateItemInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.UpdateItemOutput, error) {
 						return nil, &types.ConditionalCheckFailedException{}
@@ -265,7 +234,7 @@ func TestBananaRepositoryUpdate(t *testing.T) {
 		},
 		{
 			name: "sdk error",
-			setupMock: func() *mockDynamoClient {
+			setupMock: func(_ *testing.T) *mockDynamoClient {
 				return &mockDynamoClient{
 					updateItemFn: func(_ context.Context, _ *awsdynamodb.UpdateItemInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.UpdateItemOutput, error) {
 						return nil, errSDK
@@ -280,26 +249,10 @@ func TestBananaRepositoryUpdate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			repo := ddb.NewBananaRepository(tt.setupMock())
+			repo := ddb.NewBananaRepository(tt.setupMock(t))
 			got, err := repo.Update(context.Background(), updatedBanana)
 
-			if tt.wantErr != nil {
-				if !errors.Is(err, tt.wantErr) {
-					t.Fatalf("err = %v, want %v", err, tt.wantErr)
-				}
-				if got != tt.wantBanana {
-					t.Fatalf("got %+v, want %+v", got, tt.wantBanana)
-				}
-
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("Update: %v", err)
-			}
-			if got != tt.wantBanana {
-				t.Fatalf("got %+v, want %+v", got, tt.wantBanana)
-			}
+			assertBananaRepoResult(t, "Update", got, err, tt.wantBanana, tt.wantErr)
 		})
 	}
 }
@@ -312,15 +265,16 @@ func TestBananaRepositoryCreate(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		setupMock  func() *mockDynamoClient
+		setupMock  func(t *testing.T) *mockDynamoClient
 		wantBanana domain.Banana
 		wantErr    error
 	}{
 		{
 			name: "success",
-			setupMock: func() *mockDynamoClient {
+			setupMock: func(t *testing.T) *mockDynamoClient {
 				return &mockDynamoClient{
-					putItemFn: func(ctx context.Context, params *awsdynamodb.PutItemInput, optFns ...func(*awsdynamodb.Options)) (*awsdynamodb.PutItemOutput, error) {
+					putItemFn: func(_ context.Context, params *awsdynamodb.PutItemInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.PutItemOutput, error) {
+						assertBananaPutItem(t, params, want)
 						return &awsdynamodb.PutItemOutput{}, nil
 					},
 				}
@@ -330,7 +284,7 @@ func TestBananaRepositoryCreate(t *testing.T) {
 		},
 		{
 			name: "duplicate id",
-			setupMock: func() *mockDynamoClient {
+			setupMock: func(_ *testing.T) *mockDynamoClient {
 				return &mockDynamoClient{
 					putItemFn: func(_ context.Context, _ *awsdynamodb.PutItemInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.PutItemOutput, error) {
 						return nil, &types.ConditionalCheckFailedException{}
@@ -342,7 +296,7 @@ func TestBananaRepositoryCreate(t *testing.T) {
 		},
 		{
 			name: "sdk error",
-			setupMock: func() *mockDynamoClient {
+			setupMock: func(_ *testing.T) *mockDynamoClient {
 				return &mockDynamoClient{
 					putItemFn: func(_ context.Context, _ *awsdynamodb.PutItemInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.PutItemOutput, error) {
 						return nil, errSDK
@@ -358,26 +312,10 @@ func TestBananaRepositoryCreate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			repo := ddb.NewBananaRepository(tt.setupMock())
+			repo := ddb.NewBananaRepository(tt.setupMock(t))
 			got, err := repo.Create(context.Background(), want)
 
-			if tt.wantErr != nil {
-				if !errors.Is(err, tt.wantErr) {
-					t.Fatalf("err = %v, want %v", err, tt.wantErr)
-				}
-				if got != tt.wantBanana {
-					t.Fatalf("got %+v, want %+v", got, tt.wantBanana)
-				}
-
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("Create: %v", err)
-			}
-			if got != tt.wantBanana {
-				t.Fatalf("got %+v, want %+v", got, tt.wantBanana)
-			}
+			assertBananaRepoResult(t, "Create", got, err, tt.wantBanana, tt.wantErr)
 		})
 	}
 }
@@ -403,7 +341,7 @@ func TestBananaRepositoryList(t *testing.T) {
 
 	tests := []struct {
 		name             string
-		setupMock        func() *mockDynamoClient
+		setupMock        func(t *testing.T) *mockDynamoClient
 		wantItems        []domain.Banana
 		wantNextCursorID string
 		listOpts         domain.ListOptions
@@ -412,7 +350,7 @@ func TestBananaRepositoryList(t *testing.T) {
 	}{
 		{
 			name: "returns items",
-			setupMock: func() *mockDynamoClient {
+			setupMock: func(t *testing.T) *mockDynamoClient {
 				return &mockDynamoClient{
 					scanFn: func(_ context.Context, params *awsdynamodb.ScanInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.ScanOutput, error) {
 						if params.Limit == nil || *params.Limit != domain.DefaultListLimit {
@@ -426,7 +364,7 @@ func TestBananaRepositoryList(t *testing.T) {
 		},
 		{
 			name: "empty",
-			setupMock: func() *mockDynamoClient {
+			setupMock: func(_ *testing.T) *mockDynamoClient {
 				return &mockDynamoClient{
 					scanFn: func(_ context.Context, _ *awsdynamodb.ScanInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.ScanOutput, error) {
 						return &awsdynamodb.ScanOutput{Items: nil}, nil
@@ -437,7 +375,7 @@ func TestBananaRepositoryList(t *testing.T) {
 		},
 		{
 			name: "returns next cursor",
-			setupMock: func() *mockDynamoClient {
+			setupMock: func(_ *testing.T) *mockDynamoClient {
 				return &mockDynamoClient{
 					scanFn: func(_ context.Context, _ *awsdynamodb.ScanInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.ScanOutput, error) {
 						return &awsdynamodb.ScanOutput{
@@ -453,20 +391,10 @@ func TestBananaRepositoryList(t *testing.T) {
 			wantNextCursorID: b2.ID,
 		},
 		{
-			name: "uses cursor",
-			setupMock: func() *mockDynamoClient {
+			name: "returns items for valid cursor",
+			setupMock: func(_ *testing.T) *mockDynamoClient {
 				return &mockDynamoClient{
-					scanFn: func(_ context.Context, params *awsdynamodb.ScanInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.ScanOutput, error) {
-						if params.ExclusiveStartKey == nil {
-							t.Fatal("expected ExclusiveStartKey")
-						}
-						idVal, ok := params.ExclusiveStartKey["id"].(*types.AttributeValueMemberS)
-						if !ok {
-							t.Fatalf("ExclusiveStartKey id missing or wrong type: %v", params.ExclusiveStartKey)
-						}
-						if idVal.Value != cursorID {
-							t.Fatalf("ExclusiveStartKey id = %q, want %q", idVal.Value, cursorID)
-						}
+					scanFn: func(_ context.Context, _ *awsdynamodb.ScanInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.ScanOutput, error) {
 						return &awsdynamodb.ScanOutput{Items: page2ScanItems}, nil
 					},
 				}
@@ -476,7 +404,7 @@ func TestBananaRepositoryList(t *testing.T) {
 		},
 		{
 			name: "invalid cursor",
-			setupMock: func() *mockDynamoClient {
+			setupMock: func(_ *testing.T) *mockDynamoClient {
 				return &mockDynamoClient{
 					scanFn: func(_ context.Context, _ *awsdynamodb.ScanInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.ScanOutput, error) {
 						return nil, errors.New("scan should not be called for an invalid cursor")
@@ -489,7 +417,7 @@ func TestBananaRepositoryList(t *testing.T) {
 		},
 		{
 			name: "sdk error",
-			setupMock: func() *mockDynamoClient {
+			setupMock: func(_ *testing.T) *mockDynamoClient {
 				return &mockDynamoClient{
 					scanFn: func(_ context.Context, _ *awsdynamodb.ScanInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.ScanOutput, error) {
 						return nil, errors.New("dynamo unavailable")
@@ -504,7 +432,7 @@ func TestBananaRepositoryList(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			repo := ddb.NewBananaRepository(tt.setupMock())
+			repo := ddb.NewBananaRepository(tt.setupMock(t))
 			page, err := repo.List(context.Background(), tt.listOpts)
 
 			if tt.wantErr {

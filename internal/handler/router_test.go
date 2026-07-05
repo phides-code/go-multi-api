@@ -10,12 +10,10 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/google/uuid"
-	"github.com/phides-code/go-multi-api/internal/domain"
 	"github.com/phides-code/go-multi-api/internal/handler"
 	"github.com/phides-code/go-multi-api/internal/platform"
+	"github.com/phides-code/go-multi-api/internal/testutil"
 )
-
-const testCFTToken = "test-token"
 
 func cfTokenHeaders(token string) map[string]string {
 	return map[string]string{"X-CF-Token": token}
@@ -49,24 +47,15 @@ func TestRouterDispatchesBananas(t *testing.T) {
 	t.Parallel()
 
 	id := uuid.NewString()
-	repo := &mockBananaRepository{
-		getFn: func(_ context.Context, gotID string) (domain.Banana, error) {
-			return domain.Banana{ID: gotID, Content: "found"}, nil
-		},
-		listFn:   func(_ context.Context, _ domain.ListOptions) (domain.BananaPage, error) { return domain.BananaPage{}, nil },
-		createFn: func(_ context.Context, banana domain.Banana) (domain.Banana, error) { return banana, nil },
-		updateFn: func(_ context.Context, banana domain.Banana) (domain.Banana, error) { return banana, nil },
-		deleteFn: func(_ context.Context, _ string) (domain.Banana, error) { return domain.Banana{}, nil },
-	}
-
-	router := handler.NewRouterWithCFTToken(platform.NewLogger(), testCFTToken)
+	repo := dispatchBananaRepo()
+	router := handler.NewRouterWithCFTToken(platform.NewLogger(), testutil.TestCFTToken)
 	router.Register("bananas", handler.NewBananaHandler(repo, platform.NewLogger()))
 
 	resp, err := router.Handle(context.Background(), events.APIGatewayProxyRequest{
 		HTTPMethod:     "GET",
 		Path:           "/bananas/" + id,
 		PathParameters: map[string]string{"id": id},
-		Headers:        cfTokenHeaders(testCFTToken),
+		Headers:        cfTokenHeaders(testutil.TestCFTToken),
 	})
 	if err != nil {
 		t.Fatalf("handle: %v", err)
@@ -79,11 +68,11 @@ func TestRouterDispatchesBananas(t *testing.T) {
 func TestRouterUnknownResource(t *testing.T) {
 	t.Parallel()
 
-	router := handler.NewRouterWithCFTToken(platform.NewLogger(), testCFTToken)
+	router := handler.NewRouterWithCFTToken(platform.NewLogger(), testutil.TestCFTToken)
 	resp, err := router.Handle(context.Background(), events.APIGatewayProxyRequest{
 		HTTPMethod: "GET",
 		Path:       "/apples",
-		Headers:    cfTokenHeaders(testCFTToken),
+		Headers:    cfTokenHeaders(testutil.TestCFTToken),
 	})
 	if err != nil {
 		t.Fatalf("handle: %v", err)
@@ -96,11 +85,11 @@ func TestRouterUnknownResource(t *testing.T) {
 func TestRouterEmptyPath(t *testing.T) {
 	t.Parallel()
 
-	router := handler.NewRouterWithCFTToken(platform.NewLogger(), testCFTToken)
+	router := handler.NewRouterWithCFTToken(platform.NewLogger(), testutil.TestCFTToken)
 	resp, err := router.Handle(context.Background(), events.APIGatewayProxyRequest{
 		HTTPMethod: "GET",
 		Path:       "/",
-		Headers:    cfTokenHeaders(testCFTToken),
+		Headers:    cfTokenHeaders(testutil.TestCFTToken),
 	})
 	if err != nil {
 		t.Fatalf("handle: %v", err)
@@ -113,7 +102,7 @@ func TestRouterEmptyPath(t *testing.T) {
 func TestRouterRejectsMissingCFTToken(t *testing.T) {
 	t.Parallel()
 
-	router := handler.NewRouterWithCFTToken(platform.NewLogger(), testCFTToken)
+	router := handler.NewRouterWithCFTToken(platform.NewLogger(), testutil.TestCFTToken)
 	resp, err := router.Handle(context.Background(), events.APIGatewayProxyRequest{
 		HTTPMethod: "GET",
 		Path:       "/bananas",
@@ -129,7 +118,7 @@ func TestRouterRejectsMissingCFTToken(t *testing.T) {
 func TestRouterRejectsInvalidCFTToken(t *testing.T) {
 	t.Parallel()
 
-	router := handler.NewRouterWithCFTToken(platform.NewLogger(), testCFTToken)
+	router := handler.NewRouterWithCFTToken(platform.NewLogger(), testutil.TestCFTToken)
 	resp, err := router.Handle(context.Background(), events.APIGatewayProxyRequest{
 		HTTPMethod: "GET",
 		Path:       "/bananas",
@@ -147,17 +136,8 @@ func TestRouterSkipsCFTTokenUnderSAMLocal(t *testing.T) {
 	t.Setenv("AWS_SAM_LOCAL", "true")
 
 	id := uuid.NewString()
-	repo := &mockBananaRepository{
-		getFn: func(_ context.Context, gotID string) (domain.Banana, error) {
-			return domain.Banana{ID: gotID, Content: "found"}, nil
-		},
-		listFn:   func(_ context.Context, _ domain.ListOptions) (domain.BananaPage, error) { return domain.BananaPage{}, nil },
-		createFn: func(_ context.Context, banana domain.Banana) (domain.Banana, error) { return banana, nil },
-		updateFn: func(_ context.Context, banana domain.Banana) (domain.Banana, error) { return banana, nil },
-		deleteFn: func(_ context.Context, _ string) (domain.Banana, error) { return domain.Banana{}, nil },
-	}
-
-	router := handler.NewRouterWithCFTToken(platform.NewLogger(), testCFTToken)
+	repo := dispatchBananaRepo()
+	router := handler.NewRouterWithCFTToken(platform.NewLogger(), testutil.TestCFTToken)
 	router.Register("bananas", handler.NewBananaHandler(repo, platform.NewLogger()))
 
 	resp, err := router.Handle(context.Background(), events.APIGatewayProxyRequest{
@@ -176,8 +156,8 @@ func TestRouterSkipsCFTTokenUnderSAMLocal(t *testing.T) {
 func TestRouterAllowsOptionsWithoutCFTToken(t *testing.T) {
 	t.Parallel()
 
-	router := handler.NewRouterWithCFTToken(platform.NewLogger(), testCFTToken)
-	router.Register("bananas", handler.NewBananaHandler(stubRepo(), platform.NewLogger()))
+	router := handler.NewRouterWithCFTToken(platform.NewLogger(), testutil.TestCFTToken)
+	router.Register("bananas", handler.NewBananaHandler(emptyBananaRepo(), platform.NewLogger()))
 
 	resp, err := router.Handle(context.Background(), events.APIGatewayProxyRequest{
 		HTTPMethod: "OPTIONS",
@@ -206,13 +186,13 @@ func TestRouterAllowsOptionsWithoutCFTToken(t *testing.T) {
 func TestRouterDispatchesRegisteredPrefix(t *testing.T) {
 	t.Parallel()
 
-	router := handler.NewRouterWithCFTToken(platform.NewLogger(), testCFTToken)
+	router := handler.NewRouterWithCFTToken(platform.NewLogger(), testutil.TestCFTToken)
 	router.Register("apples", stubResourceHandler{})
 
 	resp, err := router.Handle(context.Background(), events.APIGatewayProxyRequest{
 		HTTPMethod: "GET",
 		Path:       "/apples",
-		Headers:    cfTokenHeaders(testCFTToken),
+		Headers:    cfTokenHeaders(testutil.TestCFTToken),
 	})
 	if err != nil {
 		t.Fatalf("handle: %v", err)
@@ -244,13 +224,13 @@ func TestRouterResponseEnvelopeShape(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 
-		router := handler.NewRouterWithCFTToken(platform.NewLogger(), testCFTToken)
+		router := handler.NewRouterWithCFTToken(platform.NewLogger(), testutil.TestCFTToken)
 		router.Register("apples", stubResourceHandler{})
 
 		resp, err := router.Handle(context.Background(), events.APIGatewayProxyRequest{
 			HTTPMethod: http.MethodGet,
 			Path:       "/apples",
-			Headers:    cfTokenHeaders(testCFTToken),
+			Headers:    cfTokenHeaders(testutil.TestCFTToken),
 		})
 		if err != nil {
 			t.Fatalf("handle: %v", err)
@@ -262,12 +242,12 @@ func TestRouterResponseEnvelopeShape(t *testing.T) {
 	t.Run("error", func(t *testing.T) {
 		t.Parallel()
 
-		router := handler.NewRouterWithCFTToken(platform.NewLogger(), testCFTToken)
+		router := handler.NewRouterWithCFTToken(platform.NewLogger(), testutil.TestCFTToken)
 
 		resp, err := router.Handle(context.Background(), events.APIGatewayProxyRequest{
 			HTTPMethod: http.MethodGet,
 			Path:       "/apples",
-			Headers:    cfTokenHeaders(testCFTToken),
+			Headers:    cfTokenHeaders(testutil.TestCFTToken),
 		})
 		if err != nil {
 			t.Fatalf("handle: %v", err)

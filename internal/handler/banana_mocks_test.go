@@ -1,3 +1,4 @@
+// Banana mock repository helpers for handler and router tests.
 package handler_test
 
 import (
@@ -35,7 +36,7 @@ func (m *mockBananaRepository) Delete(ctx context.Context, id string) (domain.Ba
 	return m.deleteFn(ctx, id)
 }
 
-func stubRepo() *mockBananaRepository {
+func emptyBananaRepo() *mockBananaRepository {
 	return &mockBananaRepository{
 		createFn: func(_ context.Context, banana domain.Banana) (domain.Banana, error) {
 			return domain.Banana{}, nil
@@ -55,7 +56,28 @@ func stubRepo() *mockBananaRepository {
 	}
 }
 
-func listRepo(items []domain.Banana) *mockBananaRepository {
+// dispatchBananaRepo returns a permissive mock for router dispatch tests (GET by id succeeds).
+func dispatchBananaRepo() *mockBananaRepository {
+	return &mockBananaRepository{
+		getFn: func(_ context.Context, gotID string) (domain.Banana, error) {
+			return domain.Banana{ID: gotID, Content: "found"}, nil
+		},
+		listFn: func(_ context.Context, _ domain.ListOptions) (domain.BananaPage, error) {
+			return domain.BananaPage{}, nil
+		},
+		createFn: func(_ context.Context, banana domain.Banana) (domain.Banana, error) {
+			return banana, nil
+		},
+		updateFn: func(_ context.Context, banana domain.Banana) (domain.Banana, error) {
+			return banana, nil
+		},
+		deleteFn: func(_ context.Context, _ string) (domain.Banana, error) {
+			return domain.Banana{}, nil
+		},
+	}
+}
+
+func listBananaRepo(items []domain.Banana) *mockBananaRepository {
 	return &mockBananaRepository{
 		listFn: func(_ context.Context, opts domain.ListOptions) (domain.BananaPage, error) {
 			if opts.Limit != domain.DefaultListLimit {
@@ -66,7 +88,7 @@ func listRepo(items []domain.Banana) *mockBananaRepository {
 	}
 }
 
-func updateRepo(wantID string, updated domain.Banana) *mockBananaRepository {
+func updateBananaRepo(wantID string, updated domain.Banana) *mockBananaRepository {
 	return &mockBananaRepository{
 		updateFn: func(_ context.Context, banana domain.Banana) (domain.Banana, error) {
 			if banana.ID != wantID {
@@ -74,4 +96,32 @@ func updateRepo(wantID string, updated domain.Banana) *mockBananaRepository {
 			}
 			return updated, nil
 		}}
+}
+
+func panicBananaRepo() *mockBananaRepository {
+	panicFn := func() {
+		panic("repository must not be called")
+	}
+	return &mockBananaRepository{
+		createFn: func(context.Context, domain.Banana) (domain.Banana, error) {
+			panicFn()
+			return domain.Banana{}, nil
+		},
+		getFn: func(context.Context, string) (domain.Banana, error) {
+			panicFn()
+			return domain.Banana{}, nil
+		},
+		listFn: func(context.Context, domain.ListOptions) (domain.BananaPage, error) {
+			panicFn()
+			return domain.BananaPage{}, nil
+		},
+		updateFn: func(context.Context, domain.Banana) (domain.Banana, error) {
+			panicFn()
+			return domain.Banana{}, nil
+		},
+		deleteFn: func(context.Context, string) (domain.Banana, error) {
+			panicFn()
+			return domain.Banana{}, nil
+		},
+	}
 }
