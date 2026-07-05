@@ -28,6 +28,7 @@ Full walkthrough: [Adding a new table](../README.md#adding-a-new-table).
 | `internal/domain/<resource>_repository.go` | `internal/domain/banana_repository.go` |
 | `internal/handler/<resource>_handler.go` | `internal/handler/banana_handler.go` |
 | `internal/dynamodb/<resource>_repository_test.go` | `internal/dynamodb/banana_repository_test.go` |
+| `internal/dynamodb/<resource>_assert_test.go` | `internal/dynamodb/banana_assert_test.go` — `assert<Resource>RepoResult`, `assert<Resource>PutItem` |
 | `internal/dynamodb/<resource>_repository.go` | `internal/dynamodb/banana_repository.go` |
 
 ## Shared helpers (reuse; do not duplicate per resource)
@@ -37,7 +38,8 @@ Full walkthrough: [Adding a new table](../README.md#adding-a-new-table).
 | `internal/handler/assert_test.go` | Shared envelope helpers (`requireStatusAndEnvelope`, `assertAPIError`) — any resource |
 | `internal/handler/banana_assert_test.go` | Banana wire helpers — **copy** to `<resource>_assert_test.go`: `decode<Resource>Data`, `decode<Resource>PageData`, `assert<Resource>DataKeys` |
 | `internal/handler/banana_mocks_test.go` | Mock repo pattern — **copy** to `<resource>_mocks_test.go`: `mock<Resource>Repository`, `empty<Resource>Repo`, `list<Resource>Repo`, `update<Resource>Repo`, `dispatch<Resource>Repo` (router dispatch), `panic<Resource>Repo` (validation must not call repo) |
-| `internal/dynamodb/assert_test.go` | Shared: `assertUpdateSets`. Banana reference: `assertBananaRepoResult`, `assertBananaPutItem` — copy to `assert<Resource>RepoResult` / `assert<Resource>PutItem` per resource |
+| `internal/dynamodb/assert_test.go` | Shared: `assertUpdateSets` — any updatable resource |
+| `internal/dynamodb/banana_assert_test.go` | Banana reference — **copy** to `<resource>_assert_test.go`: `assert<Resource>RepoResult`, `assert<Resource>PutItem` |
 | `internal/domain/validation.go` | `ValidateRequiredString` |
 | `internal/domain/id.go` | `ValidateID`, `NewID` (UUID keys) |
 | `internal/domain/pagination.go` | `ListOptions`, `DefaultListLimit` (cursor-based list) |

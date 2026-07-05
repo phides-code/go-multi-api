@@ -16,7 +16,7 @@ The router checks auth, routes by first path segment, and delegates. Handlers pa
 cmd/lambda/main.go          entrypoint → app.NewRouter
 internal/
   domain/                   entities, interfaces, id.go, validation.go, errors.go, pagination.go
-  dynamodb/                 repository implementations (+ assert_test.go: assertUpdateSets; assertBananaRepoResult, assertBananaPutItem)
+  dynamodb/                 repository implementations (+ assert_test.go: assertUpdateSets; banana_assert_test.go)
   handler/                  handlers, router (+ assert_test.go shared envelope helpers; banana_assert_test.go, banana_mocks_test.go)
   platform/                 response envelope, errors, logging, auth
   app/wire.go               construct repos, Register handlers
@@ -112,7 +112,7 @@ Extend an existing resource (e.g. add `description` to `Banana`). **TDD:** faili
 | 2 | **Struct + validation** — field on `Banana` + `json`/`dynamodbav` tags; add to create/update inputs if client-set; wire `ValidateRequiredString` with resource-scoped bounds (e.g. `BananaMinContentLength`) or custom `Validate*`. Server-owned fields (e.g. `createdOn`): set in handler/repo, not inputs. | `internal/domain/<resource>.go` |
 | 3 | **Handler tests** — client-error rows (400 `validation failed`; use `panic<Resource>Repo` so validation failures never call the repo); success + `assert<Resource>DataKeys` if wire shape changes. | `internal/handler/<resource>_handler_test.go`, `<resource>_mocks_test.go`, `<resource>_assert_test.go`, `assert_test.go` |
 | 4 | **Handler** — parse JSON, build inputs, validate, copy fields to `domain.Banana`. No inline business rules. | `internal/handler/<resource>_handler.go` |
-| 5 | **DynamoDB test** (if PUT-updatable) — table rows use `setupMock func(t *testing.T)`; success/error via `assertBananaRepoResult`; create success: `assertBananaPutItem`; update success: `assertUpdateSets(t, params, map[string]string{…})` for **all** updatable attrs. | `internal/dynamodb/<resource>_repository_test.go`, `assert_test.go` |
+| 5 | **DynamoDB test** (if PUT-updatable) — table rows use `setupMock func(t *testing.T)`; success/error via `assertBananaRepoResult`; create success: `assertBananaPutItem`; update success: `assertUpdateSets(t, params, map[string]string{…})` for **all** updatable attrs. | `internal/dynamodb/<resource>_repository_test.go`, `<resource>_assert_test.go`, `assert_test.go` |
 | 6 | **DynamoDB Update** (if PUT-updatable) — add field to SET expression, names, values (alphabetical order). Create/Get/List/Delete usually unchanged (struct tags). No `template.yml` change. | `internal/dynamodb/<resource>_repository.go` |
 | 7 | **Docs** — update item/create/update sections above. | this file |
 
@@ -131,7 +131,7 @@ Each table gets its own entity, interface, DynamoDB repo, handler, and tests. Im
 | 1 | Failing handler test + router dispatch test | `internal/handler/<resource>_handler_test.go`, `router_test.go` |
 | 2 | Domain tests, entity, validation, repository interface | `internal/domain/<resource>_test.go`, `<resource>.go`, `<resource>_repository.go` |
 | 3 | HTTP handler (+ tests per method, client errors, one 500 per op) | `internal/handler/<resource>_handler.go` |
-| 4 | DynamoDB tests then impl — table-driven tests, `setupMock(t)`, `assertBananaRepoResult`; create success: `assertBananaPutItem`; update success: `assertUpdateSets` | `internal/dynamodb/<resource>_repository_test.go`, `<resource>_repository.go`, `assert_test.go` |
+| 4 | DynamoDB tests then impl — table-driven tests, `setupMock(t)`, `assertBananaRepoResult`; create success: `assertBananaPutItem`; update success: `assertUpdateSets` | `internal/dynamodb/<resource>_repository_test.go`, `<resource>_repository.go`, `<resource>_assert_test.go`, `assert_test.go` |
 | 5 | Wire: `newRouter` constructs repo, `Register("<resources>", …)` | `internal/app/wire.go`, `wire_test.go` |
 | 6 | SAM table, `DynamoDBCrudPolicy` per table, API events | `template.yml` |
 | 7 | API docs | this file |
