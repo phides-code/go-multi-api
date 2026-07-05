@@ -52,7 +52,7 @@ func TestBananaHandlerCreate(t *testing.T) {
 				}
 			},
 			wantStatus:   http.StatusInternalServerError,
-			wantErrorMsg: "internal server error",
+			wantErrorMsg: platform.InternalServerErrorMessage,
 		},
 		{
 			name: "duplicate id",
@@ -175,7 +175,7 @@ func TestBananaHandlerDelete(t *testing.T) {
 			pathID:       validUuid,
 			wantStatus:   http.StatusInternalServerError,
 			wantBanana:   nil,
-			wantErrorMsg: "internal server error",
+			wantErrorMsg: platform.InternalServerErrorMessage,
 			setupRepo: func(pathID string) *mockBananaRepository {
 				return &mockBananaRepository{
 					deleteFn: func(_ context.Context, _ string) (domain.Banana, error) {
@@ -284,7 +284,7 @@ func TestBananaHandlerGetByID(t *testing.T) {
 			pathID:       validUuid,
 			wantStatus:   http.StatusInternalServerError,
 			wantBanana:   nil,
-			wantErrorMsg: "internal server error",
+			wantErrorMsg: platform.InternalServerErrorMessage,
 			setupRepo: func(pathID string) *mockBananaRepository {
 				return &mockBananaRepository{
 					getFn: func(_ context.Context, _ string) (domain.Banana, error) {
@@ -477,7 +477,7 @@ func TestBananaHandlerList(t *testing.T) {
 		{
 			name:         "GET list repo failure",
 			wantStatus:   http.StatusInternalServerError,
-			wantErrorMsg: "internal server error",
+			wantErrorMsg: platform.InternalServerErrorMessage,
 			setupRepo: func() *mockBananaRepository {
 				return &mockBananaRepository{
 					listFn: func(_ context.Context, _ domain.ListOptions) (domain.BananaPage, error) {
@@ -635,7 +635,7 @@ func TestBananaHandlerUpdate(t *testing.T) {
 			body:         validUpdateBody,
 			wantStatus:   http.StatusInternalServerError,
 			wantBanana:   nil,
-			wantErrorMsg: "internal server error",
+			wantErrorMsg: platform.InternalServerErrorMessage,
 			setupRepo: func(pathID string) *mockBananaRepository {
 				return &mockBananaRepository{
 					updateFn: func(_ context.Context, _ domain.Banana) (domain.Banana, error) {

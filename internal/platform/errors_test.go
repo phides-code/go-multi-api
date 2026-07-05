@@ -59,7 +59,7 @@ func TestErrorMapping(t *testing.T) {
 			name:       "unknown error",
 			err:        errors.New("something broke"),
 			wantStatus: http.StatusInternalServerError,
-			wantMsg:    "internal server error",
+			wantMsg:    platform.InternalServerErrorMessage,
 			wantClient: false,
 		},
 		{

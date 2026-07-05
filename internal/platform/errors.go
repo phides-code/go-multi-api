@@ -8,7 +8,8 @@ import (
 	"github.com/phides-code/go-multi-api/internal/domain"
 )
 
-const internalServerErrorMessage = "internal server error"
+// InternalServerErrorMessage is the client-facing text for unexpected failures (500).
+const InternalServerErrorMessage = "internal server error"
 
 type clientErrorMapping struct {
 	sentinel error
@@ -42,7 +43,7 @@ func ClientErrorMessage(err error) string {
 			return m.sentinel.Error()
 		}
 	}
-	return internalServerErrorMessage
+	return InternalServerErrorMessage
 }
 
 func IsClientError(err error) bool {

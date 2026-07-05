@@ -37,7 +37,7 @@ func TestWiringSmokeGETBananas(t *testing.T) {
 	resp, err := router.Handle(context.Background(), events.APIGatewayProxyRequest{
 		HTTPMethod: http.MethodGet,
 		Path:       "/bananas",
-		Headers:    map[string]string{"X-CF-Token": testutil.TestCFTToken},
+		Headers:    map[string]string{platform.CFTTokenHeader: testutil.TestCFTToken},
 	})
 	if err != nil {
 		t.Fatalf("handle: %v", err)

@@ -10,13 +10,14 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/google/uuid"
+	"github.com/phides-code/go-multi-api/internal/domain"
 	"github.com/phides-code/go-multi-api/internal/handler"
 	"github.com/phides-code/go-multi-api/internal/platform"
 	"github.com/phides-code/go-multi-api/internal/testutil"
 )
 
 func cfTokenHeaders(token string) map[string]string {
-	return map[string]string{"X-CF-Token": token}
+	return map[string]string{platform.CFTTokenHeader: token}
 }
 
 type stubResourceHandler struct{}
@@ -178,8 +179,9 @@ func TestRouterAllowsOptionsWithoutCFTToken(t *testing.T) {
 	if envelope.Data != nil {
 		t.Fatalf("expected nil data, got %v", envelope.Data)
 	}
-	if envelope.Error == nil || *envelope.Error != "method not allowed" {
-		t.Fatalf("error = %v, want %q", envelope.Error, "method not allowed")
+	wantErr := domain.ErrMethodNotAllowed.Error()
+	if envelope.Error == nil || *envelope.Error != wantErr {
+		t.Fatalf("error = %v, want %q", envelope.Error, wantErr)
 	}
 }
 

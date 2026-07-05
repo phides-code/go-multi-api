@@ -21,7 +21,7 @@ func JSONResponse(statusCode int, data any, errMsg *string) (events.APIGatewayPr
 		Error: errMsg,
 	})
 	if marshalErr != nil {
-		return JSONResponse(http.StatusInternalServerError, nil, strPtr("internal server error"))
+		return JSONResponse(http.StatusInternalServerError, nil, strPtr(InternalServerErrorMessage))
 	}
 
 	return events.APIGatewayProxyResponse{

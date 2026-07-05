@@ -10,7 +10,7 @@ import (
 func TestValidCFTToken(t *testing.T) {
 	t.Parallel()
 
-	headers := map[string]string{"X-CF-Token": "secret"}
+	headers := map[string]string{platform.CFTTokenHeader: "secret"}
 
 	if !platform.ValidCFTToken("secret", headers) {
 		t.Fatal("expected token to match")
@@ -30,7 +30,7 @@ func TestHeaderValueCaseInsensitive(t *testing.T) {
 	t.Parallel()
 
 	headers := map[string]string{"x-cf-token": "value"}
-	if got := platform.HeaderValue(headers, "X-CF-Token"); got != "value" {
+	if got := platform.HeaderValue(headers, platform.CFTTokenHeader); got != "value" {
 		t.Fatalf("header value = %q, want %q", got, "value")
 	}
 }
