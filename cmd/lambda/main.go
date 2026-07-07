@@ -1,4 +1,4 @@
-// Lambda entrypoint: wires the HTTP router and starts the Lambda handler.
+// Lambda entrypoint: builds the gateway and starts the Lambda handler.
 package main
 
 import (
@@ -13,10 +13,10 @@ import (
 func main() {
 	logger := platform.NewLogger()
 
-	router, err := app.NewRouter(context.Background(), logger)
+	g, err := app.Build(context.Background(), logger)
 	if err != nil {
-		log.Fatalf("wire router: %v", err)
+		log.Fatalf("build app: %v", err)
 	}
 
-	lambda.Start(router.Handle)
+	lambda.Start(g.Handle)
 }

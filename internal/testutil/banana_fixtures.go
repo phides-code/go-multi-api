@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/phides-code/go-multi-api/internal/domain"
+	"github.com/phides-code/go-multi-api/internal/banana"
 )
 
 // TestBananaContent is the canonical valid content in handler and DynamoDB tests.
@@ -15,15 +15,15 @@ const TestBananaContent = "ripe"
 const TestStoredBananaCreatedOn uint64 = 12345
 
 const (
-	ListBananaContentFirst  = "first"
-	ListBananaContentSecond = "second"
-	ListBananaContentPage2  = "page2"
+	ListBananaContentFirst   = "first"
+	ListBananaContentSecond  = "second"
+	ListBananaContentPage2   = "page2"
 )
 
 // BananaWithID returns a banana whose ID matches the returned id string.
-func BananaWithID(content string, createdOn uint64) (id string, banana domain.Banana) {
+func BananaWithID(content string, createdOn uint64) (id string, b banana.Banana) {
 	id = uuid.NewString()
-	banana = domain.Banana{ID: id, Content: content, CreatedOn: createdOn}
+	b = banana.Banana{ID: id, Content: content, CreatedOn: createdOn}
 	return
 }
 
@@ -34,10 +34,10 @@ func BananaCreateBody(content string) string {
 
 // ListBananaPage returns two list items and a third for cursor follow-up tests.
 // When withTimestamps is true, CreatedOn is set to 1, 2, and 3 respectively.
-func ListBananaPage(withTimestamps bool) (first, second, page2 domain.Banana) {
-	first = domain.Banana{ID: uuid.NewString(), Content: ListBananaContentFirst}
-	second = domain.Banana{ID: uuid.NewString(), Content: ListBananaContentSecond}
-	page2 = domain.Banana{ID: uuid.NewString(), Content: ListBananaContentPage2}
+func ListBananaPage(withTimestamps bool) (first, second, page2 banana.Banana) {
+	first = banana.Banana{ID: uuid.NewString(), Content: ListBananaContentFirst}
+	second = banana.Banana{ID: uuid.NewString(), Content: ListBananaContentSecond}
+	page2 = banana.Banana{ID: uuid.NewString(), Content: ListBananaContentPage2}
 	if withTimestamps {
 		first.CreatedOn = 1
 		second.CreatedOn = 2

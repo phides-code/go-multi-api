@@ -1,5 +1,5 @@
 // Shared DynamoDB repository test helpers for any resource.
-package dynamodb_test
+package testutil
 
 import (
 	"fmt"
@@ -11,9 +11,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
-// assertUpdateSets checks that UpdateItem SETs exactly the given string attributes.
+// AssertUpdateSets checks that UpdateItem SETs exactly the given string attributes.
 // Attribute names are sorted when building the expected UpdateExpression.
-func assertUpdateSets(t *testing.T, params *awsdynamodb.UpdateItemInput, want map[string]string) {
+func AssertUpdateSets(t *testing.T, params *awsdynamodb.UpdateItemInput, want map[string]string) {
 	t.Helper()
 
 	if params.UpdateExpression == nil {

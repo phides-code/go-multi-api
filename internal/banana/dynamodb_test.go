@@ -1,4 +1,5 @@
-package dynamodb_test
+// Unit tests for the banana DynamoDB repository using a mocked DynamoDB client.
+package banana_test
 
 import (
 	"context"
@@ -11,8 +12,8 @@ import (
 	awsdynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/google/uuid"
+	"github.com/phides-code/go-multi-api/internal/banana"
 	"github.com/phides-code/go-multi-api/internal/domain"
-	ddb "github.com/phides-code/go-multi-api/internal/dynamodb"
 	"github.com/phides-code/go-multi-api/internal/testutil"
 )
 
@@ -44,7 +45,7 @@ func (m *mockDynamoClient) DeleteItem(ctx context.Context, params *awsdynamodb.D
 	return m.deleteItemFn(ctx, params, optFns...)
 }
 
-func scanItems(t *testing.T, bananas []domain.Banana) []map[string]types.AttributeValue {
+func scanItems(t *testing.T, bananas []banana.Banana) []map[string]types.AttributeValue {
 	t.Helper()
 	items := make([]map[string]types.AttributeValue, len(bananas))
 	for i, b := range bananas {
@@ -65,7 +66,7 @@ func TestBananaRepositoryGetByID(t *testing.T) {
 	tests := []struct {
 		name       string
 		setupMock  func(t *testing.T) *mockDynamoClient
-		wantBanana domain.Banana
+		wantBanana banana.Banana
 		wantErr    error
 	}{
 		{
@@ -89,7 +90,7 @@ func TestBananaRepositoryGetByID(t *testing.T) {
 					},
 				}
 			},
-			wantBanana: domain.Banana{},
+			wantBanana: banana.Banana{},
 			wantErr:    domain.ErrNotFound,
 		},
 		{
@@ -101,7 +102,7 @@ func TestBananaRepositoryGetByID(t *testing.T) {
 					},
 				}
 			},
-			wantBanana: domain.Banana{},
+			wantBanana: banana.Banana{},
 			wantErr:    errSDK,
 		},
 	}
@@ -109,7 +110,7 @@ func TestBananaRepositoryGetByID(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			repo := ddb.NewBananaRepository(tt.setupMock(t))
+			repo := banana.NewRepository(tt.setupMock(t))
 			got, err := repo.GetByID(context.Background(), validId)
 
 			assertBananaRepoResult(t, "GetByID", got, err, tt.wantBanana, tt.wantErr)
@@ -125,7 +126,7 @@ func TestBananaRepositoryDelete(t *testing.T) {
 	tests := []struct {
 		name       string
 		setupMock  func(t *testing.T) *mockDynamoClient
-		wantBanana domain.Banana
+		wantBanana banana.Banana
 		wantErr    error
 	}{
 		{
@@ -149,7 +150,7 @@ func TestBananaRepositoryDelete(t *testing.T) {
 					},
 				}
 			},
-			wantBanana: domain.Banana{},
+			wantBanana: banana.Banana{},
 			wantErr:    domain.ErrNotFound,
 		},
 		{
@@ -161,7 +162,7 @@ func TestBananaRepositoryDelete(t *testing.T) {
 					},
 				}
 			},
-			wantBanana: domain.Banana{},
+			wantBanana: banana.Banana{},
 			wantErr:    errSDK,
 		},
 	}
@@ -169,7 +170,7 @@ func TestBananaRepositoryDelete(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			repo := ddb.NewBananaRepository(tt.setupMock(t))
+			repo := banana.NewRepository(tt.setupMock(t))
 			got, err := repo.Delete(context.Background(), validId)
 
 			assertBananaRepoResult(t, "Delete", got, err, tt.wantBanana, tt.wantErr)
@@ -180,7 +181,7 @@ func TestBananaRepositoryDelete(t *testing.T) {
 func TestBananaRepositoryUpdate(t *testing.T) {
 	t.Parallel()
 
-	updatedBanana := domain.Banana{ID: uuid.NewString(), Content: "updated", CreatedOn: 12345}
+	updatedBanana := banana.Banana{ID: uuid.NewString(), Content: "updated", CreatedOn: 12345}
 	errSDK := errors.New("dynamo unavailable")
 
 	item, err := attributevalue.MarshalMap(updatedBanana)
@@ -191,7 +192,7 @@ func TestBananaRepositoryUpdate(t *testing.T) {
 	tests := []struct {
 		name       string
 		setupMock  func(t *testing.T) *mockDynamoClient
-		wantBanana domain.Banana
+		wantBanana banana.Banana
 		wantErr    error
 	}{
 		{
@@ -199,7 +200,7 @@ func TestBananaRepositoryUpdate(t *testing.T) {
 			setupMock: func(t *testing.T) *mockDynamoClient {
 				return &mockDynamoClient{
 					updateItemFn: func(_ context.Context, params *awsdynamodb.UpdateItemInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.UpdateItemOutput, error) {
-						assertUpdateSets(t, params, map[string]string{
+						testutil.AssertUpdateSets(t, params, map[string]string{
 							"content": updatedBanana.Content,
 						})
 						return &awsdynamodb.UpdateItemOutput{Attributes: item}, nil
@@ -218,7 +219,7 @@ func TestBananaRepositoryUpdate(t *testing.T) {
 					},
 				}
 			},
-			wantBanana: domain.Banana{},
+			wantBanana: banana.Banana{},
 			wantErr:    domain.ErrNotFound,
 		},
 		{
@@ -230,7 +231,7 @@ func TestBananaRepositoryUpdate(t *testing.T) {
 					},
 				}
 			},
-			wantBanana: domain.Banana{},
+			wantBanana: banana.Banana{},
 			wantErr:    errSDK,
 		},
 	}
@@ -238,7 +239,7 @@ func TestBananaRepositoryUpdate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			repo := ddb.NewBananaRepository(tt.setupMock(t))
+			repo := banana.NewRepository(tt.setupMock(t))
 			got, err := repo.Update(context.Background(), updatedBanana)
 
 			assertBananaRepoResult(t, "Update", got, err, tt.wantBanana, tt.wantErr)
@@ -249,13 +250,13 @@ func TestBananaRepositoryUpdate(t *testing.T) {
 func TestBananaRepositoryCreate(t *testing.T) {
 	t.Parallel()
 
-	want := domain.Banana{ID: uuid.NewString(), Content: "new", CreatedOn: 12345}
+	want := banana.Banana{ID: uuid.NewString(), Content: "new", CreatedOn: 12345}
 	errSDK := errors.New("dynamo unavailable")
 
 	tests := []struct {
 		name       string
 		setupMock  func(t *testing.T) *mockDynamoClient
-		wantBanana domain.Banana
+		wantBanana banana.Banana
 		wantErr    error
 	}{
 		{
@@ -280,7 +281,7 @@ func TestBananaRepositoryCreate(t *testing.T) {
 					},
 				}
 			},
-			wantBanana: domain.Banana{},
+			wantBanana: banana.Banana{},
 			wantErr:    domain.ErrAlreadyExists,
 		},
 		{
@@ -292,7 +293,7 @@ func TestBananaRepositoryCreate(t *testing.T) {
 					},
 				}
 			},
-			wantBanana: domain.Banana{},
+			wantBanana: banana.Banana{},
 			wantErr:    errSDK,
 		},
 	}
@@ -301,7 +302,7 @@ func TestBananaRepositoryCreate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			repo := ddb.NewBananaRepository(tt.setupMock(t))
+			repo := banana.NewRepository(tt.setupMock(t))
 			got, err := repo.Create(context.Background(), want)
 
 			assertBananaRepoResult(t, "Create", got, err, tt.wantBanana, tt.wantErr)
@@ -313,7 +314,7 @@ func TestBananaRepositoryList(t *testing.T) {
 	t.Parallel()
 
 	b1, b2, page2Banana := testutil.ListBananaPage(true)
-	page2 := []domain.Banana{page2Banana}
+	page2 := []banana.Banana{page2Banana}
 
 	cursorID := uuid.NewString()
 	cursorRaw, err := json.Marshal(map[string]string{"id": cursorID})
@@ -322,14 +323,14 @@ func TestBananaRepositoryList(t *testing.T) {
 	}
 	inputCursor := base64.StdEncoding.EncodeToString(cursorRaw)
 
-	wantItems := []domain.Banana{b1, b2}
+	wantItems := []banana.Banana{b1, b2}
 	scanOutputItems := scanItems(t, wantItems)
 	page2ScanItems := scanItems(t, page2)
 
 	tests := []struct {
 		name             string
 		setupMock        func(t *testing.T) *mockDynamoClient
-		wantItems        []domain.Banana
+		wantItems        []banana.Banana
 		wantNextCursorID string
 		listOpts         domain.ListOptions
 		wantErr          bool
@@ -358,7 +359,7 @@ func TestBananaRepositoryList(t *testing.T) {
 					},
 				}
 			},
-			wantItems: []domain.Banana{},
+			wantItems: []banana.Banana{},
 		},
 		{
 			name: "returns next cursor",
@@ -419,7 +420,7 @@ func TestBananaRepositoryList(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			repo := ddb.NewBananaRepository(tt.setupMock(t))
+			repo := banana.NewRepository(tt.setupMock(t))
 			page, err := repo.List(context.Background(), tt.listOpts)
 
 			if tt.wantErr {

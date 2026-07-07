@@ -1,5 +1,5 @@
-// DynamoDB implementation of domain.BananaRepository for the bananas table.
-package dynamodb
+// DynamoDB implementation of Repository for the bananas table.
+package banana
 
 import (
 	"context"
@@ -15,9 +15,9 @@ import (
 	"github.com/phides-code/go-multi-api/internal/domain"
 )
 
-const bananasTableName = "AppnameBananas"
+const tableName = "AppnameBananas"
 
-type BananaRepository struct {
+type dynamoRepository struct {
 	client dynamoAPI
 }
 
@@ -29,18 +29,18 @@ type dynamoAPI interface {
 	DeleteItem(ctx context.Context, params *dynamodb.DeleteItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.DeleteItemOutput, error)
 }
 
-func NewBananaRepository(client dynamoAPI) *BananaRepository {
-	return &BananaRepository{client: client}
+func NewRepository(client dynamoAPI) Repository {
+	return &dynamoRepository{client: client}
 }
 
-func (r *BananaRepository) Create(ctx context.Context, banana domain.Banana) (domain.Banana, error) {
+func (r *dynamoRepository) Create(ctx context.Context, banana Banana) (Banana, error) {
 	item, err := attributevalue.MarshalMap(banana)
 	if err != nil {
-		return domain.Banana{}, fmt.Errorf("marshal banana: %w", err)
+		return Banana{}, fmt.Errorf("marshal banana: %w", err)
 	}
 
 	_, err = r.client.PutItem(ctx, &dynamodb.PutItemInput{
-		TableName:           aws.String(bananasTableName),
+		TableName:           aws.String(tableName),
 		Item:                item,
 		ConditionExpression: aws.String("attribute_not_exists(id)"),
 	})
@@ -48,83 +48,83 @@ func (r *BananaRepository) Create(ctx context.Context, banana domain.Banana) (do
 	if err != nil {
 		var conditionalCheck *types.ConditionalCheckFailedException
 		if errors.As(err, &conditionalCheck) {
-			return domain.Banana{}, domain.ErrAlreadyExists
+			return Banana{}, domain.ErrAlreadyExists
 		}
-		return domain.Banana{}, fmt.Errorf("put item: %w", err)
+		return Banana{}, fmt.Errorf("put item: %w", err)
 	}
 
 	return banana, nil
 }
 
-func (r *BananaRepository) GetByID(ctx context.Context, id string) (domain.Banana, error) {
+func (r *dynamoRepository) GetByID(ctx context.Context, id string) (Banana, error) {
 	out, err := r.client.GetItem(ctx, &dynamodb.GetItemInput{
-		TableName: aws.String(bananasTableName),
+		TableName: aws.String(tableName),
 		Key: map[string]types.AttributeValue{
 			"id": &types.AttributeValueMemberS{Value: id},
 		},
 	})
 	if err != nil {
-		return domain.Banana{}, fmt.Errorf("get item: %w", err)
+		return Banana{}, fmt.Errorf("get item: %w", err)
 	}
 	if out.Item == nil {
-		return domain.Banana{}, domain.ErrNotFound
+		return Banana{}, domain.ErrNotFound
 	}
 
-	var banana domain.Banana
+	var banana Banana
 	if err := attributevalue.UnmarshalMap(out.Item, &banana); err != nil {
-		return domain.Banana{}, fmt.Errorf("unmarshal banana: %w", err)
+		return Banana{}, fmt.Errorf("unmarshal banana: %w", err)
 	}
 
 	return banana, nil
 }
 
-func (r *BananaRepository) List(ctx context.Context, opts domain.ListOptions) (domain.BananaPage, error) {
+func (r *dynamoRepository) List(ctx context.Context, opts domain.ListOptions) (Page, error) {
 	limit := opts.Limit
 	if limit <= 0 {
 		limit = domain.DefaultListLimit
 	}
 
 	input := &dynamodb.ScanInput{
-		TableName: aws.String(bananasTableName),
+		TableName: aws.String(tableName),
 		Limit:     aws.Int32(limit),
 	}
 
 	if opts.Cursor != "" {
 		startKey, err := decodeCursor(opts.Cursor)
 		if err != nil {
-			return domain.BananaPage{}, domain.ErrInvalidCursor
+			return Page{}, domain.ErrInvalidCursor
 		}
 		input.ExclusiveStartKey = startKey
 	}
 
 	out, err := r.client.Scan(ctx, input)
 	if err != nil {
-		return domain.BananaPage{}, fmt.Errorf("scan items: %w", err)
+		return Page{}, fmt.Errorf("scan items: %w", err)
 	}
 
-	items := make([]domain.Banana, 0, len(out.Items))
+	items := make([]Banana, 0, len(out.Items))
 	for _, item := range out.Items {
-		var banana domain.Banana
+		var banana Banana
 		if err := attributevalue.UnmarshalMap(item, &banana); err != nil {
-			return domain.BananaPage{}, fmt.Errorf("unmarshal banana: %w", err)
+			return Page{}, fmt.Errorf("unmarshal banana: %w", err)
 		}
 		items = append(items, banana)
 	}
 
-	page := domain.BananaPage{Items: items}
+	page := Page{Items: items}
 	if out.LastEvaluatedKey != nil {
 		page.NextCursor, err = encodeCursor(out.LastEvaluatedKey)
 		if err != nil {
-			return domain.BananaPage{}, fmt.Errorf("encode cursor: %w", err)
+			return Page{}, fmt.Errorf("encode cursor: %w", err)
 		}
 	}
 
 	return page, nil
 }
 
-func (r *BananaRepository) Update(ctx context.Context, banana domain.Banana) (domain.Banana, error) {
+func (r *dynamoRepository) Update(ctx context.Context, banana Banana) (Banana, error) {
 	out, err := r.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
-		TableName: aws.String(bananasTableName),
+		TableName: aws.String(tableName),
 		Key: map[string]types.AttributeValue{
 			"id": &types.AttributeValueMemberS{Value: banana.ID},
 		},
@@ -139,37 +139,37 @@ func (r *BananaRepository) Update(ctx context.Context, banana domain.Banana) (do
 	if err != nil {
 		var conditionalCheck *types.ConditionalCheckFailedException
 		if errors.As(err, &conditionalCheck) {
-			return domain.Banana{}, domain.ErrNotFound
+			return Banana{}, domain.ErrNotFound
 		}
-		return domain.Banana{}, fmt.Errorf("update item: %w", err)
+		return Banana{}, fmt.Errorf("update item: %w", err)
 	}
 
-	var updated domain.Banana
+	var updated Banana
 	if err := attributevalue.UnmarshalMap(out.Attributes, &updated); err != nil {
-		return domain.Banana{}, fmt.Errorf("unmarshal banana: %w", err)
+		return Banana{}, fmt.Errorf("unmarshal banana: %w", err)
 	}
 
 	return updated, nil
 }
 
-func (r *BananaRepository) Delete(ctx context.Context, id string) (domain.Banana, error) {
+func (r *dynamoRepository) Delete(ctx context.Context, id string) (Banana, error) {
 	out, err := r.client.DeleteItem(ctx, &dynamodb.DeleteItemInput{
-		TableName: aws.String(bananasTableName),
+		TableName: aws.String(tableName),
 		Key: map[string]types.AttributeValue{
 			"id": &types.AttributeValueMemberS{Value: id},
 		},
 		ReturnValues: types.ReturnValueAllOld,
 	})
 	if err != nil {
-		return domain.Banana{}, fmt.Errorf("delete item: %w", err)
+		return Banana{}, fmt.Errorf("delete item: %w", err)
 	}
 	if out.Attributes == nil {
-		return domain.Banana{}, domain.ErrNotFound
+		return Banana{}, domain.ErrNotFound
 	}
 
-	var deleted domain.Banana
+	var deleted Banana
 	if err := attributevalue.UnmarshalMap(out.Attributes, &deleted); err != nil {
-		return domain.Banana{}, fmt.Errorf("unmarshal banana: %w", err)
+		return Banana{}, fmt.Errorf("unmarshal banana: %w", err)
 	}
 
 	return deleted, nil

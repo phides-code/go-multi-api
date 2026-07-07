@@ -1,5 +1,5 @@
 // Shared handler test helpers for any resource (envelope parsing and API errors).
-package handler_test
+package testutil
 
 import (
 	"encoding/json"
@@ -9,7 +9,7 @@ import (
 	"github.com/phides-code/go-multi-api/internal/platform"
 )
 
-func requireStatusAndEnvelope(t *testing.T, resp events.APIGatewayProxyResponse, wantStatus int) platform.APIResponse {
+func RequireStatusAndEnvelope(t *testing.T, resp events.APIGatewayProxyResponse, wantStatus int) platform.APIResponse {
 	t.Helper()
 	if resp.StatusCode != wantStatus {
 		t.Fatalf("status = %d, want %d", resp.StatusCode, wantStatus)
@@ -21,7 +21,7 @@ func requireStatusAndEnvelope(t *testing.T, resp events.APIGatewayProxyResponse,
 	return envelope
 }
 
-func assertAPIError(t *testing.T, envelope platform.APIResponse, wantMsg string) {
+func AssertAPIError(t *testing.T, envelope platform.APIResponse, wantMsg string) {
 	t.Helper()
 	if envelope.Data != nil {
 		t.Fatalf("expected nil data, got %v", envelope.Data)

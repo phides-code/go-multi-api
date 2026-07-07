@@ -1,5 +1,5 @@
 // Unit tests for banana HTTP handling using a mocked repository.
-package handler_test
+package banana_test
 
 import (
 	"context"
@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/phides-code/go-multi-api/internal/banana"
 	"github.com/phides-code/go-multi-api/internal/domain"
-	"github.com/phides-code/go-multi-api/internal/handler"
 	"github.com/phides-code/go-multi-api/internal/platform"
 	"github.com/phides-code/go-multi-api/internal/testutil"
 )
@@ -35,7 +35,7 @@ func TestBananaHandlerCreate(t *testing.T) {
 			body: validCreateBody,
 			setupRepo: func() *mockBananaRepository {
 				return &mockBananaRepository{
-					createFn: func(_ context.Context, banana domain.Banana) (domain.Banana, error) {
+					createFn: func(_ context.Context, banana banana.Banana) (banana.Banana, error) {
 						return banana, nil
 					},
 				}
@@ -48,8 +48,8 @@ func TestBananaHandlerCreate(t *testing.T) {
 			body: validCreateBody,
 			setupRepo: func() *mockBananaRepository {
 				return &mockBananaRepository{
-					createFn: func(_ context.Context, _ domain.Banana) (domain.Banana, error) {
-						return domain.Banana{}, errors.New("db down")
+					createFn: func(_ context.Context, _ banana.Banana) (banana.Banana, error) {
+						return banana.Banana{}, errors.New("db down")
 					},
 				}
 			},
@@ -61,8 +61,8 @@ func TestBananaHandlerCreate(t *testing.T) {
 			body: validCreateBody,
 			setupRepo: func() *mockBananaRepository {
 				return &mockBananaRepository{
-					createFn: func(_ context.Context, _ domain.Banana) (domain.Banana, error) {
-						return domain.Banana{}, domain.ErrAlreadyExists
+					createFn: func(_ context.Context, _ banana.Banana) (banana.Banana, error) {
+						return banana.Banana{}, domain.ErrAlreadyExists
 					},
 				}
 			},
@@ -75,7 +75,7 @@ func TestBananaHandlerCreate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			h := handler.NewBananaHandler(tt.setupRepo(), platform.NewLogger())
+			h := banana.NewHandler(tt.setupRepo(), platform.NewLogger())
 
 			resp, err := h.Handle(context.Background(), events.APIGatewayProxyRequest{
 				HTTPMethod: "POST",
@@ -85,10 +85,10 @@ func TestBananaHandlerCreate(t *testing.T) {
 				t.Fatalf("handle: %v", err)
 			}
 
-			envelope := requireStatusAndEnvelope(t, resp, tt.wantStatus)
+			envelope := testutil.RequireStatusAndEnvelope(t, resp, tt.wantStatus)
 
 			if tt.wantErrorMsg != "" {
-				assertAPIError(t, envelope, tt.wantErrorMsg)
+				testutil.AssertAPIError(t, envelope, tt.wantErrorMsg)
 				return
 			}
 
@@ -122,7 +122,7 @@ func TestBananaHandlerDelete(t *testing.T) {
 		name         string
 		pathID       string
 		wantStatus   int
-		wantBanana   *domain.Banana
+		wantBanana   *banana.Banana
 		wantErrorMsg string
 		setupRepo    func(pathID string) *mockBananaRepository
 	}{
@@ -134,9 +134,9 @@ func TestBananaHandlerDelete(t *testing.T) {
 			wantErrorMsg: "",
 			setupRepo: func(pathID string) *mockBananaRepository {
 				return &mockBananaRepository{
-					deleteFn: func(_ context.Context, id string) (domain.Banana, error) {
+					deleteFn: func(_ context.Context, id string) (banana.Banana, error) {
 						if id != pathID {
-							return domain.Banana{}, domain.ErrNotFound
+							return banana.Banana{}, domain.ErrNotFound
 						}
 						return deletedBanana, nil
 					},
@@ -159,9 +159,9 @@ func TestBananaHandlerDelete(t *testing.T) {
 			wantErrorMsg: "not found",
 			setupRepo: func(pathID string) *mockBananaRepository {
 				return &mockBananaRepository{
-					deleteFn: func(_ context.Context, id string) (domain.Banana, error) {
+					deleteFn: func(_ context.Context, id string) (banana.Banana, error) {
 						if id == pathID {
-							return domain.Banana{}, domain.ErrNotFound
+							return banana.Banana{}, domain.ErrNotFound
 						}
 						return deletedBanana, nil
 					},
@@ -176,8 +176,8 @@ func TestBananaHandlerDelete(t *testing.T) {
 			wantErrorMsg: platform.InternalServerErrorMessage,
 			setupRepo: func(pathID string) *mockBananaRepository {
 				return &mockBananaRepository{
-					deleteFn: func(_ context.Context, _ string) (domain.Banana, error) {
-						return domain.Banana{}, errors.New("db down")
+					deleteFn: func(_ context.Context, _ string) (banana.Banana, error) {
+						return banana.Banana{}, errors.New("db down")
 					},
 				}
 			},
@@ -187,7 +187,7 @@ func TestBananaHandlerDelete(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			h := handler.NewBananaHandler(tt.setupRepo(tt.pathID), platform.NewLogger())
+			h := banana.NewHandler(tt.setupRepo(tt.pathID), platform.NewLogger())
 
 			req := events.APIGatewayProxyRequest{
 				HTTPMethod: http.MethodDelete,
@@ -202,10 +202,10 @@ func TestBananaHandlerDelete(t *testing.T) {
 				t.Fatalf("handle: %v", err)
 			}
 
-			envelope := requireStatusAndEnvelope(t, resp, tt.wantStatus)
+			envelope := testutil.RequireStatusAndEnvelope(t, resp, tt.wantStatus)
 
 			if tt.wantErrorMsg != "" {
-				assertAPIError(t, envelope, tt.wantErrorMsg)
+				testutil.AssertAPIError(t, envelope, tt.wantErrorMsg)
 				return
 			}
 
@@ -227,7 +227,7 @@ func TestBananaHandlerGetByID(t *testing.T) {
 		name         string
 		pathID       string
 		wantStatus   int
-		wantBanana   *domain.Banana
+		wantBanana   *banana.Banana
 		wantErrorMsg string
 		setupRepo    func(pathID string) *mockBananaRepository
 	}{
@@ -239,9 +239,9 @@ func TestBananaHandlerGetByID(t *testing.T) {
 			wantErrorMsg: "",
 			setupRepo: func(pathID string) *mockBananaRepository {
 				return &mockBananaRepository{
-					getFn: func(_ context.Context, id string) (domain.Banana, error) {
+					getFn: func(_ context.Context, id string) (banana.Banana, error) {
 						if id != pathID {
-							return domain.Banana{}, domain.ErrNotFound
+							return banana.Banana{}, domain.ErrNotFound
 						}
 						return validBanana, nil
 					},
@@ -264,9 +264,9 @@ func TestBananaHandlerGetByID(t *testing.T) {
 			wantErrorMsg: "not found",
 			setupRepo: func(pathID string) *mockBananaRepository {
 				return &mockBananaRepository{
-					getFn: func(_ context.Context, id string) (domain.Banana, error) {
+					getFn: func(_ context.Context, id string) (banana.Banana, error) {
 						if id == pathID {
-							return domain.Banana{}, domain.ErrNotFound
+							return banana.Banana{}, domain.ErrNotFound
 						}
 						return validBanana, nil
 					},
@@ -281,8 +281,8 @@ func TestBananaHandlerGetByID(t *testing.T) {
 			wantErrorMsg: platform.InternalServerErrorMessage,
 			setupRepo: func(pathID string) *mockBananaRepository {
 				return &mockBananaRepository{
-					getFn: func(_ context.Context, _ string) (domain.Banana, error) {
-						return domain.Banana{}, errors.New("db down")
+					getFn: func(_ context.Context, _ string) (banana.Banana, error) {
+						return banana.Banana{}, errors.New("db down")
 					},
 				}
 			},
@@ -293,7 +293,7 @@ func TestBananaHandlerGetByID(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			h := handler.NewBananaHandler(tt.setupRepo(tt.pathID), platform.NewLogger())
+			h := banana.NewHandler(tt.setupRepo(tt.pathID), platform.NewLogger())
 
 			req := events.APIGatewayProxyRequest{
 				HTTPMethod: http.MethodGet,
@@ -307,10 +307,10 @@ func TestBananaHandlerGetByID(t *testing.T) {
 			if err != nil {
 				t.Fatalf("handle: %v", err)
 			}
-			envelope := requireStatusAndEnvelope(t, resp, tt.wantStatus)
+			envelope := testutil.RequireStatusAndEnvelope(t, resp, tt.wantStatus)
 
 			if tt.wantErrorMsg != "" {
-				assertAPIError(t, envelope, tt.wantErrorMsg)
+				testutil.AssertAPIError(t, envelope, tt.wantErrorMsg)
 				return
 			}
 
@@ -368,7 +368,7 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 		{
 			name:         "POST content too long",
 			method:       "POST",
-			body:         fmt.Sprintf(`{"content":%q}`, strings.Repeat("a", domain.BananaMaxContentLength+1)),
+			body:         fmt.Sprintf(`{"content":%q}`, strings.Repeat("a", banana.MaxContentLength+1)),
 			wantStatus:   http.StatusBadRequest,
 			wantErrorMsg: "validation failed",
 			setupRepo:    panicBananaRepo,
@@ -384,7 +384,7 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 				repo = tt.setupRepo()
 			}
 
-			h := handler.NewBananaHandler(repo, platform.NewLogger())
+			h := banana.NewHandler(repo, platform.NewLogger())
 
 			req := events.APIGatewayProxyRequest{
 				HTTPMethod: tt.method,
@@ -396,7 +396,7 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 				t.Fatalf("handle: %v", err)
 			}
 
-			assertAPIError(t, requireStatusAndEnvelope(t, resp, tt.wantStatus), tt.wantErrorMsg)
+			testutil.AssertAPIError(t, testutil.RequireStatusAndEnvelope(t, resp, tt.wantStatus), tt.wantErrorMsg)
 		})
 	}
 }
@@ -405,13 +405,13 @@ func TestBananaHandlerList(t *testing.T) {
 	t.Parallel()
 
 	bananaOne, bananaTwo, page2Item := testutil.ListBananaPage(false)
-	wantItems := []domain.Banana{bananaOne, bananaTwo}
+	wantItems := []banana.Banana{bananaOne, bananaTwo}
 	nextCursor := "abc123"
 
 	tests := []struct {
 		name           string
 		wantStatus     int
-		wantItems      []domain.Banana
+		wantItems      []banana.Banana
 		wantErrorMsg   string
 		wantNextCursor string
 		setupRepo      func() *mockBananaRepository
@@ -428,10 +428,10 @@ func TestBananaHandlerList(t *testing.T) {
 		{
 			name:           "GET list empty",
 			wantStatus:     http.StatusOK,
-			wantItems:      []domain.Banana{},
+			wantItems:      []banana.Banana{},
 			wantErrorMsg:   "",
 			wantNextCursor: "",
-			setupRepo:      func() *mockBananaRepository { return listBananaRepo([]domain.Banana{}) },
+			setupRepo:      func() *mockBananaRepository { return listBananaRepo([]banana.Banana{}) },
 		},
 		{
 			name:           "GET list returns next cursor",
@@ -441,8 +441,8 @@ func TestBananaHandlerList(t *testing.T) {
 			wantNextCursor: nextCursor,
 			setupRepo: func() *mockBananaRepository {
 				return &mockBananaRepository{
-					listFn: func(_ context.Context, opts domain.ListOptions) (domain.BananaPage, error) {
-						return domain.BananaPage{
+					listFn: func(_ context.Context, opts domain.ListOptions) (banana.Page, error) {
+						return banana.Page{
 							Items:      wantItems,
 							NextCursor: nextCursor,
 						}, nil
@@ -453,15 +453,15 @@ func TestBananaHandlerList(t *testing.T) {
 		{
 			name:        "GET list passes cursor query param",
 			wantStatus:  http.StatusOK,
-			wantItems:   []domain.Banana{page2Item},
+			wantItems:   []banana.Banana{page2Item},
 			queryCursor: nextCursor,
 			setupRepo: func() *mockBananaRepository {
 				return &mockBananaRepository{
-					listFn: func(_ context.Context, opts domain.ListOptions) (domain.BananaPage, error) {
+					listFn: func(_ context.Context, opts domain.ListOptions) (banana.Page, error) {
 						if opts.Cursor != nextCursor {
-							return domain.BananaPage{}, errors.New("wrong cursor")
+							return banana.Page{}, errors.New("wrong cursor")
 						}
-						return domain.BananaPage{Items: []domain.Banana{page2Item}}, nil
+						return banana.Page{Items: []banana.Banana{page2Item}}, nil
 					},
 				}
 			},
@@ -472,8 +472,8 @@ func TestBananaHandlerList(t *testing.T) {
 			wantErrorMsg: platform.InternalServerErrorMessage,
 			setupRepo: func() *mockBananaRepository {
 				return &mockBananaRepository{
-					listFn: func(_ context.Context, _ domain.ListOptions) (domain.BananaPage, error) {
-						return domain.BananaPage{}, errors.New("db down")
+					listFn: func(_ context.Context, _ domain.ListOptions) (banana.Page, error) {
+						return banana.Page{}, errors.New("db down")
 					},
 				}
 			},
@@ -485,8 +485,8 @@ func TestBananaHandlerList(t *testing.T) {
 			queryCursor:  "!!!not-base64!!!",
 			setupRepo: func() *mockBananaRepository {
 				return &mockBananaRepository{
-					listFn: func(_ context.Context, _ domain.ListOptions) (domain.BananaPage, error) {
-						return domain.BananaPage{}, domain.ErrInvalidCursor
+					listFn: func(_ context.Context, _ domain.ListOptions) (banana.Page, error) {
+						return banana.Page{}, domain.ErrInvalidCursor
 					},
 				}
 			},
@@ -497,7 +497,7 @@ func TestBananaHandlerList(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			h := handler.NewBananaHandler(tt.setupRepo(), platform.NewLogger())
+			h := banana.NewHandler(tt.setupRepo(), platform.NewLogger())
 
 			req := events.APIGatewayProxyRequest{
 				HTTPMethod: http.MethodGet,
@@ -514,10 +514,10 @@ func TestBananaHandlerList(t *testing.T) {
 				t.Fatalf("handle: %v", err)
 			}
 
-			envelope := requireStatusAndEnvelope(t, resp, tt.wantStatus)
+			envelope := testutil.RequireStatusAndEnvelope(t, resp, tt.wantStatus)
 
 			if tt.wantErrorMsg != "" {
-				assertAPIError(t, envelope, tt.wantErrorMsg)
+				testutil.AssertAPIError(t, envelope, tt.wantErrorMsg)
 				return
 			}
 
@@ -550,7 +550,7 @@ func TestBananaHandlerUpdate(t *testing.T) {
 		pathID       string
 		body         string
 		wantStatus   int
-		wantBanana   *domain.Banana
+		wantBanana   *banana.Banana
 		wantErrorMsg string
 		setupRepo    func(pathID string) *mockBananaRepository
 	}{
@@ -605,9 +605,9 @@ func TestBananaHandlerUpdate(t *testing.T) {
 			wantErrorMsg: "not found",
 			setupRepo: func(pathID string) *mockBananaRepository {
 				return &mockBananaRepository{
-					updateFn: func(_ context.Context, banana domain.Banana) (domain.Banana, error) {
-						if banana.ID == pathID {
-							return domain.Banana{}, domain.ErrNotFound
+					updateFn: func(_ context.Context, b banana.Banana) (banana.Banana, error) {
+						if b.ID == pathID {
+							return banana.Banana{}, domain.ErrNotFound
 						}
 						return updatedBanana, nil
 					},
@@ -623,8 +623,8 @@ func TestBananaHandlerUpdate(t *testing.T) {
 			wantErrorMsg: platform.InternalServerErrorMessage,
 			setupRepo: func(pathID string) *mockBananaRepository {
 				return &mockBananaRepository{
-					updateFn: func(_ context.Context, _ domain.Banana) (domain.Banana, error) {
-						return domain.Banana{}, errors.New("db down")
+					updateFn: func(_ context.Context, _ banana.Banana) (banana.Banana, error) {
+						return banana.Banana{}, errors.New("db down")
 					},
 				}
 			},
@@ -641,7 +641,7 @@ func TestBananaHandlerUpdate(t *testing.T) {
 		{
 			name:         "PUT content too long",
 			pathID:       validUuid,
-			body:         fmt.Sprintf(`{"content":%q}`, strings.Repeat("a", domain.BananaMaxContentLength+1)),
+			body:         fmt.Sprintf(`{"content":%q}`, strings.Repeat("a", banana.MaxContentLength+1)),
 			wantStatus:   http.StatusBadRequest,
 			wantBanana:   nil,
 			wantErrorMsg: "validation failed",
@@ -653,7 +653,7 @@ func TestBananaHandlerUpdate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			h := handler.NewBananaHandler(tt.setupRepo(tt.pathID), platform.NewLogger())
+			h := banana.NewHandler(tt.setupRepo(tt.pathID), platform.NewLogger())
 
 			req := events.APIGatewayProxyRequest{
 				HTTPMethod: http.MethodPut,
@@ -669,10 +669,10 @@ func TestBananaHandlerUpdate(t *testing.T) {
 				t.Fatalf("handle: %v", err)
 			}
 
-			envelope := requireStatusAndEnvelope(t, resp, tt.wantStatus)
+			envelope := testutil.RequireStatusAndEnvelope(t, resp, tt.wantStatus)
 
 			if tt.wantErrorMsg != "" {
-				assertAPIError(t, envelope, tt.wantErrorMsg)
+				testutil.AssertAPIError(t, envelope, tt.wantErrorMsg)
 				return
 			}
 

@@ -1,5 +1,5 @@
-// Request router: dispatches API Gateway paths to registered resource handlers.
-package handler
+// API gateway: auth gate and first-path-segment routing to registered resource handlers.
+package gateway
 
 import (
 	"context"
@@ -15,36 +15,36 @@ type ResourceHandler interface {
 	Handle(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error)
 }
 
-type Router struct {
+type Gateway struct {
 	logger   *platform.Logger
 	cfToken  string
 	handlers map[string]ResourceHandler
 }
 
-func NewRouter(logger *platform.Logger) *Router {
-	return NewRouterWithCFTToken(logger, os.Getenv("AWS_CF_TOKEN"))
+func NewGateway(logger *platform.Logger) *Gateway {
+	return NewGatewayWithCFTToken(logger, os.Getenv("AWS_CF_TOKEN"))
 }
 
-func NewRouterWithCFTToken(logger *platform.Logger, cfToken string) *Router {
-	return &Router{
+func NewGatewayWithCFTToken(logger *platform.Logger, cfToken string) *Gateway {
+	return &Gateway{
 		logger:   logger,
 		cfToken:  cfToken,
 		handlers: make(map[string]ResourceHandler),
 	}
 }
 
-func (r *Router) Register(prefix string, handler ResourceHandler) {
-	r.handlers[prefix] = handler
+func (g *Gateway) Register(prefix string, handler ResourceHandler) {
+	g.handlers[prefix] = handler
 }
 
-func (r *Router) Handle(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+func (g *Gateway) Handle(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	if req.HTTPMethod != http.MethodOptions &&
 		!platform.LocalMode() &&
-		!platform.ValidCFTToken(r.cfToken, req.Headers) {
+		!platform.ValidCFTToken(g.cfToken, req.Headers) {
 		return platform.ErrorResponse(http.StatusUnauthorized, "unauthorized")
 	}
 
-	logger := r.logger.WithRequestID(req.RequestContext.RequestID)
+	logger := g.logger.WithRequestID(req.RequestContext.RequestID)
 	logger.InfoContext(ctx, "incoming request",
 		"method", req.HTTPMethod,
 		"path", req.Path,
@@ -56,7 +56,7 @@ func (r *Router) Handle(ctx context.Context, req events.APIGatewayProxyRequest) 
 		return platform.ErrorResponse(404, "not found")
 	}
 
-	handler, ok := r.handlers[segment]
+	handler, ok := g.handlers[segment]
 	if !ok {
 		return platform.ErrorResponse(404, "not found")
 	}

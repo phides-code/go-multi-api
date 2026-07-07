@@ -1,5 +1,5 @@
-// HTTP handler for /bananas: maps API Gateway requests to domain operations.
-package handler
+// HTTP handler for /bananas: maps API Gateway requests to repository operations.
+package banana
 
 import (
 	"context"
@@ -12,16 +12,16 @@ import (
 	"github.com/phides-code/go-multi-api/internal/platform"
 )
 
-type BananaHandler struct {
-	repo   domain.BananaRepository
+type Handler struct {
+	repo   Repository
 	logger *platform.Logger
 }
 
-func NewBananaHandler(repo domain.BananaRepository, logger *platform.Logger) *BananaHandler {
-	return &BananaHandler{repo: repo, logger: logger}
+func NewHandler(repo Repository, logger *platform.Logger) *Handler {
+	return &Handler{repo: repo, logger: logger}
 }
 
-func (h *BananaHandler) Handle(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+func (h *Handler) Handle(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	id := strings.TrimSpace(req.PathParameters["id"])
 
 	switch req.HTTPMethod {
@@ -41,7 +41,7 @@ func (h *BananaHandler) Handle(ctx context.Context, req events.APIGatewayProxyRe
 	}
 }
 
-func (h *BananaHandler) list(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+func (h *Handler) list(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	cursor := strings.TrimSpace(req.QueryStringParameters["cursor"])
 
 	page, err := h.repo.List(ctx, domain.ListOptions{
@@ -55,7 +55,7 @@ func (h *BananaHandler) list(ctx context.Context, req events.APIGatewayProxyRequ
 	return platform.SuccessResponse(200, page)
 }
 
-func (h *BananaHandler) getByID(ctx context.Context, id string) (events.APIGatewayProxyResponse, error) {
+func (h *Handler) getByID(ctx context.Context, id string) (events.APIGatewayProxyResponse, error) {
 	if err := domain.ValidateID(id); err != nil {
 		return h.errorResponse(ctx, err, "get banana")
 	}
@@ -68,7 +68,7 @@ func (h *BananaHandler) getByID(ctx context.Context, id string) (events.APIGatew
 	return platform.SuccessResponse(200, banana)
 }
 
-func (h *BananaHandler) create(ctx context.Context, body string) (events.APIGatewayProxyResponse, error) {
+func (h *Handler) create(ctx context.Context, body string) (events.APIGatewayProxyResponse, error) {
 	var payload struct {
 		Content string `json:"content"`
 	}
@@ -76,12 +76,12 @@ func (h *BananaHandler) create(ctx context.Context, body string) (events.APIGate
 		return h.errorResponse(ctx, domain.ErrInvalidJSON, "create banana")
 	}
 
-	input := domain.CreateBananaInput{Content: payload.Content}
-	if err := domain.ValidateCreateInput(input); err != nil {
+	input := CreateInput{Content: payload.Content}
+	if err := ValidateCreateInput(input); err != nil {
 		return h.errorResponse(ctx, err, "create banana")
 	}
 
-	banana := domain.Banana{
+	banana := Banana{
 		ID:        domain.NewID(),
 		Content:   payload.Content,
 		CreatedOn: uint64(time.Now().UnixMilli()),
@@ -95,7 +95,7 @@ func (h *BananaHandler) create(ctx context.Context, body string) (events.APIGate
 	return platform.SuccessResponse(201, created)
 }
 
-func (h *BananaHandler) update(ctx context.Context, id, body string) (events.APIGatewayProxyResponse, error) {
+func (h *Handler) update(ctx context.Context, id, body string) (events.APIGatewayProxyResponse, error) {
 	if err := domain.ValidateID(id); err != nil {
 		return h.errorResponse(ctx, err, "update banana")
 	}
@@ -107,12 +107,12 @@ func (h *BananaHandler) update(ctx context.Context, id, body string) (events.API
 		return h.errorResponse(ctx, domain.ErrInvalidJSON, "update banana")
 	}
 
-	input := domain.UpdateBananaInput{ID: id, Content: payload.Content}
-	if err := domain.ValidateUpdateInput(input); err != nil {
+	input := UpdateInput{ID: id, Content: payload.Content}
+	if err := ValidateUpdateInput(input); err != nil {
 		return h.errorResponse(ctx, err, "update banana")
 	}
 
-	updated, err := h.repo.Update(ctx, domain.Banana{
+	updated, err := h.repo.Update(ctx, Banana{
 		ID:      id,
 		Content: payload.Content,
 	})
@@ -123,7 +123,7 @@ func (h *BananaHandler) update(ctx context.Context, id, body string) (events.API
 	return platform.SuccessResponse(200, updated)
 }
 
-func (h *BananaHandler) delete(ctx context.Context, id string) (events.APIGatewayProxyResponse, error) {
+func (h *Handler) delete(ctx context.Context, id string) (events.APIGatewayProxyResponse, error) {
 	if err := domain.ValidateID(id); err != nil {
 		return h.errorResponse(ctx, err, "delete banana")
 	}
@@ -136,7 +136,7 @@ func (h *BananaHandler) delete(ctx context.Context, id string) (events.APIGatewa
 	return platform.SuccessResponse(200, deleted)
 }
 
-func (h *BananaHandler) errorResponse(ctx context.Context, err error, operation string) (events.APIGatewayProxyResponse, error) {
+func (h *Handler) errorResponse(ctx context.Context, err error, operation string) (events.APIGatewayProxyResponse, error) {
 	if platform.IsClientError(err) {
 		h.logger.InfoContext(ctx, operation+" client error", "error", err.Error())
 	} else {

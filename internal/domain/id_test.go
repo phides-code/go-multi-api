@@ -1,3 +1,4 @@
+// Unit tests for UUID validation and generation.
 package domain_test
 
 import (

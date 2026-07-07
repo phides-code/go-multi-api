@@ -6,53 +6,52 @@ Full walkthrough: [Adding a new table](../README.md#adding-a-new-table).
 
 ## TDD order
 
-1. **Failing handler test** — one vertical slice (e.g. `GET /apples` → empty page) with a mock repo.
-2. **Router dispatch test** — `Register("<resources>", …)` in `router_test.go`.
-3. **Domain tests** → entity + validation + repository interface.
+1. **Failing handler test** — one vertical slice (e.g. `GET /apples` → empty page) with a mock repo in `internal/<resource>/`.
+2. **Router integration test** — `Register("<resources>", …)` in `internal/<resource>/router_test.go`.
+3. **Entity + validation tests** — `internal/<resource>/<resource>_test.go`.
 4. **Handler** — minimum code to pass step 1; expand tests per method.
-5. **DynamoDB tests** → table-driven repository tests (`setupMock(t)`, `assertBananaRepoResult`, `assertBananaPutItem` on create success, `assertUpdateSets` on update success) → implementation.
-6. **Wire** — `internal/app/wire.go` + wiring smoke test.
+5. **DynamoDB tests** → table-driven repository tests in `internal/<resource>/dynamodb_test.go` → `dynamodb.go` implementation.
+6. **Compose** — `internal/app/app.go` + composition smoke test.
 7. **Infrastructure** — `template.yml`.
 8. **API docs** — `README.md` contract for the new resource.
 9. **`make test`** — must pass before PR.
 
-## Files to create
+## Files to create (vertical slice)
 
-| File | Reference |
-| ---- | --------- |
-| `internal/handler/<resource>_handler_test.go` | `internal/handler/banana_handler_test.go` — **start here** |
-| `internal/handler/<resource>_assert_test.go` | `internal/handler/banana_assert_test.go` — decode/assert wire shape |
-| `internal/handler/<resource>_mocks_test.go` | `internal/handler/banana_mocks_test.go` — mock repo helpers |
-| `internal/handler/<resource>_fixtures_test.go` | `internal/handler/banana_fixtures_test.go` — package-local fixture helpers (e.g. `existingBananaFixture`) |
-| `internal/domain/<resource>_test.go` | `internal/domain/banana_test.go` |
-| `internal/domain/<resource>.go` | `internal/domain/banana.go` |
-| `internal/domain/<resource>_repository.go` | `internal/domain/banana_repository.go` |
-| `internal/handler/<resource>_handler.go` | `internal/handler/banana_handler.go` |
-| `internal/dynamodb/<resource>_repository_test.go` | `internal/dynamodb/banana_repository_test.go` |
-| `internal/dynamodb/<resource>_fixtures_test.go` | `internal/dynamodb/banana_fixtures_test.go` — e.g. `storedBananaFixture` for Get/Delete mocks |
-| `internal/dynamodb/<resource>_assert_test.go` | `internal/dynamodb/banana_assert_test.go` — `assert<Resource>RepoResult`, `assert<Resource>PutItem` |
-| `internal/dynamodb/<resource>_repository.go` | `internal/dynamodb/banana_repository.go` |
+Copy `internal/banana/` → `internal/<resource>/` and rename. One package per resource:
 
-## Shared helpers (reuse; do not duplicate per resource)
+| File | Reference (banana) |
+| ---- | ---------------- |
+| `internal/<resource>/<resource>.go` | `banana.go` — entity, validation, content bounds (`MinContentLength` / `MaxContentLength`) |
+| `internal/<resource>/repository.go` | `repository.go` — `Repository` interface + list `Page` type |
+| `internal/<resource>/handler.go` | `handler.go` — HTTP handler; `NewHandler(repo, logger)` |
+| `internal/<resource>/dynamodb.go` | `dynamodb.go` — `NewRepository(client)` DynamoDB impl |
+| `internal/<resource>/<resource>_test.go` | `banana_test.go` — validation tests |
+| `internal/<resource>/handler_test.go` | `handler_test.go` — HTTP tests (`package <resource>_test`) |
+| `internal/<resource>/dynamodb_test.go` | `dynamodb_test.go` — repository tests |
+| `internal/<resource>/assert_test.go` | `assert_test.go` — wire decode + repo result/put asserts |
+| `internal/<resource>/fixtures_test.go` | `fixtures_test.go` — e.g. `existingAppleFixture()` |
+| `internal/<resource>/dynamodb_fixtures_test.go` | `dynamodb_fixtures_test.go` — e.g. `storedAppleFixture(t)` |
+| `internal/<resource>/mocks_test.go` | `mocks_test.go` — mock repo helpers |
+| `internal/<resource>/router_test.go` | `router_test.go` — router + resource integration |
+| `internal/testutil/<resource>_fixtures.go` | `banana_fixtures.go` — optional shared fixtures if needed cross-package |
 
-| File | Purpose |
+## Shared packages (reuse; do not duplicate per resource)
+
+| Package / file | Purpose |
 | ---- | ------- |
-| `internal/handler/assert_test.go` | Shared envelope helpers (`requireStatusAndEnvelope`, `assertAPIError`) — any resource |
-| `internal/handler/banana_assert_test.go` | Banana wire helpers — **copy** to `<resource>_assert_test.go`: `decode<Resource>Data`, `decode<Resource>PageData`, `assert<Resource>DataKeys` |
-| `internal/handler/banana_mocks_test.go` | Mock repo pattern — **copy** to `<resource>_mocks_test.go`: `mock<Resource>Repository`, `empty<Resource>Repo`, `list<Resource>Repo`, `update<Resource>Repo`, `dispatch<Resource>Repo` (router dispatch), `panic<Resource>Repo` (validation must not call repo) |
-| `internal/dynamodb/assert_test.go` | Shared: `assertUpdateSets` — any updatable resource |
-| `internal/dynamodb/banana_assert_test.go` | Banana reference — **copy** to `<resource>_assert_test.go`: `assert<Resource>RepoResult`, `assert<Resource>PutItem` |
-| `internal/domain/validation.go` | `ValidateRequiredString` |
-| `internal/domain/id.go` | `ValidateID`, `NewID` (UUID keys) |
-| `internal/domain/pagination.go` | `ListOptions`, `DefaultListLimit` (cursor-based list) |
-| `internal/testutil/consts.go` | Cross-package test constants (e.g. `TestCFTToken` for `router_test.go` and `wire_test.go`) |
-| `internal/testutil/banana_fixtures.go` | Banana fixtures shared by handler and DynamoDB tests — **copy pattern** for new resources: `Test<Resource>Content`, `BananaWithID` → `<Resource>WithID`, `BananaCreateBody`, `ListBananaPage` → `List<Resource>Page` |
+| `internal/domain/` | Cross-cutting only: `errors.go`, `id.go`, `validation.go`, `pagination.go` |
+| `internal/gateway/gateway.go` | Auth gate + path routing; `Register(prefix, ResourceHandler)` |
+| `internal/platform/` | Response envelope, error mapping, logging, auth header |
+| `internal/testutil/consts.go` | `TestCFTToken` for gateway and composition tests |
+| `internal/testutil/handler_assert.go` | `RequireStatusAndEnvelope`, `AssertAPIError` |
+| `internal/testutil/dynamodb_assert.go` | `AssertUpdateSets` for update success mocks |
 
 ## Files to edit
 
-- [ ] `internal/handler/router_test.go` — dispatch test (`TestRouterDispatchesRegisteredPrefix` or `TestRouterDispatches<Resources>`); use `dispatch<Resource>Repo()` for permissive mocks (see `dispatchBananaRepo`)
-- [ ] `internal/app/wire.go` — construct repo, `router.Register("<resources>", …)`
-- [ ] `internal/app/wire_test.go` — wiring smoke test (mirror `TestWiringSmokeGETBananas`; use `testutil.TestCFTToken`)
+- [ ] `internal/app/app.go` — `<resource>.NewRepository(...)`, `d.Register("<resources>", <resource>.NewHandler(...))`
+- [ ] `internal/app/app_test.go` — composition smoke test (mirror `TestWiringSmokeGETBananas`)
+- [ ] `internal/gateway/gateway_test.go` — generic routing/auth only; resource integration lives in `internal/<resource>/router_test.go`
 - [ ] `template.yml` — table, **one `DynamoDBCrudPolicy` per table**, API events
 - [ ] `README.md` — API contract: endpoints, item shape, create/update bodies, validation
 
@@ -62,39 +61,30 @@ Full walkthrough: [Adding a new table](../README.md#adding-a-new-table).
 |---|--------|
 | SAM logical ID | `Appname<Resources>Table` |
 | Physical `TableName` | `Appname<Resources>` |
-| Go constant | `"Appname<Resources>"` |
+| Go constant | `"Appname<Resources>"` in `<resource>/dynamodb.go` |
 
 ## SAM API event names
 
 Match the logical ID to the HTTP method (see `template.yml` bananas): `PostBanana` + `Method: POST`, `UpdateBanana` + `Method: PUT`, `GetBanana` + `GET`, etc. Avoid names like `PutBanana` for a POST route.
 
-## Second table in a copied project
+## Second table in the same project
 
-This template ships one resource (bananas). When a **copied project** adds another table:
+1. Copy `internal/banana/` → `internal/<resource>/` and rename symbols.
+2. In `internal/app/app.go` — construct the new repo and `d.Register("<resources>", <resource>.NewHandler(...))`.
+3. In `template.yml` — add table, append `DynamoDBCrudPolicy`, add API events.
+4. Add a composition smoke test in `app_test.go`.
+5. Add `internal/testutil/<resource>_fixtures.go` if handler and DynamoDB tests share fixtures.
 
-1. Create the new resource files (table above).
-2. In `internal/app/wire.go` — construct the new repo and add `router.Register("<resources>", handler.New<Resource>Handler(...))` beside the existing registration.
-3. In `template.yml` — add a table resource, append a `DynamoDBCrudPolicy` (do not replace existing policies), add API events for the methods you expose.
-4. Add a wiring smoke test row in `wire_test.go` for the new path.
+Shared `domain/` and `platform/` stay resource-neutral.
 
-No shared-type refactor required — shared domain/platform code stays resource-neutral.
+## Test patterns (copy from banana)
 
-## DynamoDB test patterns (copy from banana)
-
-- Table field: `setupMock func(t *testing.T) *mockDynamoClient` — pass subtest `t` at `tt.setupMock(t)`; use named `t` in mocks that call `t.Error` / assert helpers.
-- Persisted row fixture: `storedBananaFixture(t)` in `<resource>_fixtures_test.go` — ID-linked entity + marshaled DynamoDB item for Get/Delete mocks.
-- Single-entity methods (Get/Create/Update/Delete): `assertBananaRepoResult(t, "<Op>", got, err, want, wantErr)`.
-- Create success mock: `assertBananaPutItem(t, params, want)`.
-- Update success mock: `assertUpdateSets(t, params, map[string]string{…})`.
-- List: assert returned items/cursors in the subtest loop (no `assertBananaRepoResult` — returns a page).
-- Validation bounds: resource-scoped constants in `<resource>.go` (see `BananaMinContentLength` / `BananaMaxContentLength`).
-
-## Handler test fixtures (copy from banana)
-
-- Canonical valid content: `testutil.TestBananaContent` — use for create/get/update/delete success paths and matching JSON via `testutil.BananaCreateBody`.
-- ID-linked entity: `existingBananaFixture()` in `<resource>_fixtures_test.go` for get/update/delete table setup.
-- List pagination labels: `testutil.ListBananaPage(withTimestamps)` — handler tests use `false`; DynamoDB list tests use `true` when asserting `createdOn`.
-- Domain validation tests may use any non-empty string (e.g. `"hello"`) — they test rules, not the HTTP narrative.
+- Package: production code in `package <resource>`; tests in `package <resource>_test`.
+- Handler tests: `testutil.RequireStatusAndEnvelope`, `testutil.AssertAPIError`; mock repo in `mocks_test.go`.
+- DynamoDB tests: `setupMock func(t *testing.T) *mockDynamoClient`; `storedBananaFixture(t)` for Get/Delete; `assertBananaRepoResult`, `assertBananaPutItem` in `assert_test.go`; `testutil.AssertUpdateSets` on update success.
+- Gateway integration: `router_test.go` in the resource package registers with `gateway.NewGatewayWithCFTToken`.
+- Validation bounds: `MinContentLength` / `MaxContentLength` in `<resource>.go`.
+- Avoid naming a function parameter `banana` when the package is `banana` — use `b` instead (shadowing breaks `banana.Banana{}` zero values).
 
 ## Before PR
 

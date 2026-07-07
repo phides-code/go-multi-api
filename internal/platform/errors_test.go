@@ -1,3 +1,4 @@
+// Unit tests for domain-to-HTTP error mapping and client-facing messages.
 package platform_test
 
 import (

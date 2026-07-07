@@ -1,3 +1,4 @@
+// Unit tests for shared string validation helpers.
 package domain_test
 
 import (

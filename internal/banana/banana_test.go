@@ -1,11 +1,11 @@
-// Unit tests for Banana create/update validation wiring.
-package domain_test
+// Unit tests for banana create/update validation.
+package banana_test
 
 import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/phides-code/go-multi-api/internal/domain"
+	"github.com/phides-code/go-multi-api/internal/banana"
 )
 
 func TestValidateCreateInput(t *testing.T) {
@@ -13,17 +13,17 @@ func TestValidateCreateInput(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		input   domain.CreateBananaInput
+		input   banana.CreateInput
 		wantErr bool
 	}{
-		{name: "valid", input: domain.CreateBananaInput{Content: "hello"}, wantErr: false},
-		{name: "empty content", input: domain.CreateBananaInput{Content: ""}, wantErr: true},
+		{name: "valid", input: banana.CreateInput{Content: "hello"}, wantErr: false},
+		{name: "empty content", input: banana.CreateInput{Content: ""}, wantErr: true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			err := domain.ValidateCreateInput(tt.input)
+			err := banana.ValidateCreateInput(tt.input)
 
 			if tt.wantErr && err == nil {
 				t.Fatal("expected error")
@@ -43,18 +43,18 @@ func TestValidateUpdateInput(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		input   domain.UpdateBananaInput
+		input   banana.UpdateInput
 		wantErr bool
 	}{
-		{name: "valid", input: domain.UpdateBananaInput{ID: validID, Content: "hello"}, wantErr: false},
-		{name: "invalid id", input: domain.UpdateBananaInput{ID: "bad", Content: "hello"}, wantErr: true},
-		{name: "empty content", input: domain.UpdateBananaInput{ID: validID, Content: ""}, wantErr: true},
+		{name: "valid", input: banana.UpdateInput{ID: validID, Content: "hello"}, wantErr: false},
+		{name: "invalid id", input: banana.UpdateInput{ID: "bad", Content: "hello"}, wantErr: true},
+		{name: "empty content", input: banana.UpdateInput{ID: validID, Content: ""}, wantErr: true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			err := domain.ValidateUpdateInput(tt.input)
+			err := banana.ValidateUpdateInput(tt.input)
 
 			if tt.wantErr && err == nil {
 				t.Fatal("expected error")
