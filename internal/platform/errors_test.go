@@ -71,13 +71,6 @@ func TestErrorMapping(t *testing.T) {
 			wantClient: true,
 		},
 		{
-			name:       "invalid cursor",
-			err:        domain.ErrInvalidCursor,
-			wantStatus: http.StatusBadRequest,
-			wantMsg:    "invalid cursor",
-			wantClient: true,
-		},
-		{
 			name:       "already exists",
 			err:        domain.ErrAlreadyExists,
 			wantStatus: http.StatusConflict,
@@ -113,7 +106,6 @@ func TestClientErrorMessageUsesDomainSentinelText(t *testing.T) {
 		domain.ErrInvalidJSON,
 		domain.ErrMethodNotAllowed,
 		domain.ErrAlreadyExists,
-		domain.ErrInvalidCursor,
 	}
 
 	for _, sentinel := range sentinels {

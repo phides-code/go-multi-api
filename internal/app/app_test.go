@@ -8,7 +8,6 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/phides-code/go-multi-api/internal/banana"
-	"github.com/phides-code/go-multi-api/internal/domain"
 	"github.com/phides-code/go-multi-api/internal/platform"
 	"github.com/phides-code/go-multi-api/internal/testutil"
 )
@@ -21,8 +20,8 @@ func (stubBananaRepo) Create(_ context.Context, _ banana.Banana) (banana.Banana,
 func (stubBananaRepo) GetByID(_ context.Context, _ string) (banana.Banana, error) {
 	return banana.Banana{}, nil
 }
-func (stubBananaRepo) List(_ context.Context, _ domain.ListOptions) (banana.Page, error) {
-	return banana.Page{}, nil
+func (stubBananaRepo) List(_ context.Context) ([]banana.Banana, error) {
+	return nil, nil
 }
 func (stubBananaRepo) Update(_ context.Context, _ banana.Banana) (banana.Banana, error) {
 	return banana.Banana{}, nil

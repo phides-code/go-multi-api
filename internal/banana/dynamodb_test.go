@@ -3,8 +3,6 @@ package banana_test
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"testing"
 
@@ -313,36 +311,25 @@ func TestBananaRepositoryCreate(t *testing.T) {
 func TestBananaRepositoryList(t *testing.T) {
 	t.Parallel()
 
-	b1, b2, page2Banana := testutil.ListBananaPage(true)
-	page2 := []banana.Banana{page2Banana}
-
-	cursorID := uuid.NewString()
-	cursorRaw, err := json.Marshal(map[string]string{"id": cursorID})
-	if err != nil {
-		t.Fatal(err)
-	}
-	inputCursor := base64.StdEncoding.EncodeToString(cursorRaw)
-
+	b1, b2, b3 := testutil.ListBananas(true)
 	wantItems := []banana.Banana{b1, b2}
+	page2 := []banana.Banana{b3}
 	scanOutputItems := scanItems(t, wantItems)
 	page2ScanItems := scanItems(t, page2)
 
 	tests := []struct {
-		name             string
-		setupMock        func(t *testing.T) *mockDynamoClient
-		wantItems        []banana.Banana
-		wantNextCursorID string
-		listOpts         domain.ListOptions
-		wantErr          bool
-		wantErrIs        error
+		name      string
+		setupMock func(t *testing.T) *mockDynamoClient
+		wantItems []banana.Banana
+		wantErr   bool
 	}{
 		{
 			name: "returns items",
-			setupMock: func(t *testing.T) *mockDynamoClient {
+			setupMock: func(_ *testing.T) *mockDynamoClient {
 				return &mockDynamoClient{
 					scanFn: func(_ context.Context, params *awsdynamodb.ScanInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.ScanOutput, error) {
-						if params.Limit == nil || *params.Limit != domain.DefaultListLimit {
-							t.Errorf("Limit = %v, want %v", params.Limit, domain.DefaultListLimit)
+						if params.Limit != nil {
+							t.Errorf("Limit = %v, want nil", params.Limit)
 						}
 						return &awsdynamodb.ScanOutput{Items: scanOutputItems}, nil
 					},
@@ -362,46 +349,36 @@ func TestBananaRepositoryList(t *testing.T) {
 			wantItems: []banana.Banana{},
 		},
 		{
-			name: "returns next cursor",
+			name: "scans all pages",
 			setupMock: func(_ *testing.T) *mockDynamoClient {
+				calls := 0
 				return &mockDynamoClient{
-					scanFn: func(_ context.Context, _ *awsdynamodb.ScanInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.ScanOutput, error) {
-						return &awsdynamodb.ScanOutput{
-							Items: scanOutputItems,
-							LastEvaluatedKey: map[string]types.AttributeValue{
-								"id": &types.AttributeValueMemberS{Value: b2.ID},
-							},
-						}, nil
+					scanFn: func(_ context.Context, params *awsdynamodb.ScanInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.ScanOutput, error) {
+						calls++
+						switch calls {
+						case 1:
+							if params.ExclusiveStartKey != nil {
+								t.Fatal("expected first scan without ExclusiveStartKey")
+							}
+							return &awsdynamodb.ScanOutput{
+								Items: scanOutputItems,
+								LastEvaluatedKey: map[string]types.AttributeValue{
+									"id": &types.AttributeValueMemberS{Value: b2.ID},
+								},
+							}, nil
+						case 2:
+							if params.ExclusiveStartKey == nil {
+								t.Fatal("expected second scan with ExclusiveStartKey")
+							}
+							return &awsdynamodb.ScanOutput{Items: page2ScanItems}, nil
+						default:
+							t.Fatal("unexpected extra scan")
+							return nil, nil
+						}
 					},
 				}
 			},
-			wantItems:        wantItems,
-			wantNextCursorID: b2.ID,
-		},
-		{
-			name: "returns items for valid cursor",
-			setupMock: func(_ *testing.T) *mockDynamoClient {
-				return &mockDynamoClient{
-					scanFn: func(_ context.Context, _ *awsdynamodb.ScanInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.ScanOutput, error) {
-						return &awsdynamodb.ScanOutput{Items: page2ScanItems}, nil
-					},
-				}
-			},
-			listOpts:  domain.ListOptions{Cursor: inputCursor},
-			wantItems: page2,
-		},
-		{
-			name: "invalid cursor",
-			setupMock: func(_ *testing.T) *mockDynamoClient {
-				return &mockDynamoClient{
-					scanFn: func(_ context.Context, _ *awsdynamodb.ScanInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.ScanOutput, error) {
-						return nil, errors.New("scan should not be called for an invalid cursor")
-					},
-				}
-			},
-			listOpts:  domain.ListOptions{Cursor: "!!!not-base64!!!"},
-			wantErr:   true,
-			wantErrIs: domain.ErrInvalidCursor,
+			wantItems: append(wantItems, page2...),
 		},
 		{
 			name: "sdk error",
@@ -421,14 +398,11 @@ func TestBananaRepositoryList(t *testing.T) {
 			t.Parallel()
 
 			repo := banana.NewRepository(tt.setupMock(t))
-			page, err := repo.List(context.Background(), tt.listOpts)
+			items, err := repo.List(context.Background())
 
 			if tt.wantErr {
 				if err == nil {
 					t.Fatal("expected error, got nil")
-				}
-				if tt.wantErrIs != nil && !errors.Is(err, tt.wantErrIs) {
-					t.Fatalf("err = %v, want %v", err, tt.wantErrIs)
 				}
 				return
 			}
@@ -437,36 +411,14 @@ func TestBananaRepositoryList(t *testing.T) {
 				t.Fatalf("List: %v", err)
 			}
 
-			if len(page.Items) != len(tt.wantItems) {
-				t.Fatalf("len(Items) = %d, want %d", len(page.Items), len(tt.wantItems))
+			if len(items) != len(tt.wantItems) {
+				t.Fatalf("len(items) = %d, want %d", len(items), len(tt.wantItems))
 			}
 
 			for i := range tt.wantItems {
-				if page.Items[i] != tt.wantItems[i] {
-					t.Fatalf("Items[%d] = %+v, want %+v", i, page.Items[i], tt.wantItems[i])
+				if items[i] != tt.wantItems[i] {
+					t.Fatalf("items[%d] = %+v, want %+v", i, items[i], tt.wantItems[i])
 				}
-			}
-
-			if tt.wantNextCursorID != "" {
-				if page.NextCursor == "" {
-					t.Fatal("expected NextCursor, got empty")
-				}
-
-				raw, err := base64.StdEncoding.DecodeString(page.NextCursor)
-				if err != nil {
-					t.Fatalf("decode cursor: %v", err)
-				}
-
-				var parsed map[string]string
-				if err := json.Unmarshal(raw, &parsed); err != nil {
-					t.Fatalf("unmarshal cursor: %v", err)
-				}
-
-				if parsed["id"] != tt.wantNextCursorID {
-					t.Fatalf("cursor id = %q, want %q", parsed["id"], tt.wantNextCursorID)
-				}
-			} else if page.NextCursor != "" {
-				t.Fatalf("unexpected NextCursor: %q", page.NextCursor)
 			}
 		})
 	}

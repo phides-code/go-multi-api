@@ -29,7 +29,7 @@ func decodeBananaData(t *testing.T, envelope platform.APIResponse) banana.Banana
 	return b
 }
 
-func decodeBananaPageData(t *testing.T, envelope platform.APIResponse) banana.Page {
+func decodeBananaListData(t *testing.T, envelope platform.APIResponse) []banana.Banana {
 	t.Helper()
 	if envelope.Error != nil {
 		t.Fatalf("unexpected error: %s", *envelope.Error)
@@ -38,11 +38,11 @@ func decodeBananaPageData(t *testing.T, envelope platform.APIResponse) banana.Pa
 	if err != nil {
 		t.Fatalf("marshal data: %v", err)
 	}
-	var page banana.Page
-	if err := json.Unmarshal(data, &page); err != nil {
-		t.Fatalf("unmarshal page: %v", err)
+	var items []banana.Banana
+	if err := json.Unmarshal(data, &items); err != nil {
+		t.Fatalf("unmarshal list: %v", err)
 	}
-	return page
+	return items
 }
 
 func assertBananaDataKeys(t *testing.T, envelope platform.APIResponse) {

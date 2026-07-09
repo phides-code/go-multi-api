@@ -15,7 +15,7 @@ The router checks auth, routes by first path segment, and delegates. Each resour
 ```
 cmd/lambda/main.go          entrypoint → app.Build
 internal/
-  domain/                   cross-cutting: errors, id, validation, pagination
+  domain/                   cross-cutting: errors, id, validation
   gateway/                  auth gate + path routing; Register(prefix, ResourceHandler)
   banana/                   vertical slice: entity, repository, handler, dynamodb
   platform/                 response envelope, errors, logging, auth
@@ -25,7 +25,7 @@ template.yml                SAM: API Gateway, Lambda, tables
 Makefile                    build, test, local, deploy
 ```
 
-Copy `internal/banana/` for new resources. Reuse `domain.ValidateRequiredString`, `domain.ValidateID`, and `domain.ListOptions`; wire resource-specific validation in `<resource>.go`.
+Copy `internal/banana/` for new resources. Reuse `domain.ValidateRequiredString` and `domain.ValidateID`; wire resource-specific validation in `<resource>.go`.
 
 ## API contract
 
@@ -48,7 +48,6 @@ Success: `data` set, `error` null. Failure: opposite.
 | 400 | `invalid json` | `ErrInvalidJSON` | Bad body |
 | 400 | `invalid id` | `ErrInvalidID` | Path `{id}` not UUID |
 | 400 | `validation failed` | `ErrValidationFailed` | Domain rule failed |
-| 400 | `invalid cursor` | `ErrInvalidCursor` | Bad `?cursor=` |
 | 404 | `not found` | `ErrNotFound` | Missing item |
 | 409 | `already exists` | `ErrAlreadyExists` | Duplicate create |
 | 405 | `method not allowed` | `ErrMethodNotAllowed` | Unsupported method |
@@ -61,13 +60,13 @@ Return `ErrValidationFailed` from validation; no per-field error strings unless 
 
 | Method | Path | Behavior |
 | ------ | ---- | -------- |
-| `GET` | `/bananas` | List (paginated) |
+| `GET` | `/bananas` | List all |
 | `GET` | `/bananas/{id}` | Get by UUID |
 | `POST` | `/bananas` | Create; server sets `id`, `createdOn` |
 | `PUT` | `/bananas/{id}` | Update `content`; 404 if missing |
 | `DELETE` | `/bananas/{id}` | Hard delete; returns deleted item |
 
-**Item shape** (single banana in create/get/update/delete responses; list `items` use the same fields):
+**Item shape** (single banana in create/get/update/delete responses; list returns an array of the same shape):
 
 ```json
 {
@@ -81,7 +80,7 @@ Return `ErrValidationFailed` from validation; no per-field error strings unless 
 
 **Update body** (PUT): `{ "content": "string" }`
 
-**List** (`GET /bananas`): `data.items` (array of item shape), optional `data.nextCursor`. Fixed page size of 50 (`domain.DefaultListLimit`) — not configurable via `?limit=`. Pagination uses `?cursor=<nextCursor>` only; omit `cursor` for the first page. Bad cursor → 400 `invalid cursor`.
+**List** (`GET /bananas`): `data` is an array of item shape. The repository scans the full table (DynamoDB pagination is handled internally, not exposed over HTTP).
 
 **Validation:** `content` required on create/update, 1–1000 Unicode characters (`MinContentLength`–`MaxContentLength` in `internal/banana/banana.go`) → 400 `validation failed`. Path `{id}` must be UUID → 400 `invalid id`.
 
@@ -97,7 +96,6 @@ make local     # API on :8000 (Docker); no auth header needed
 
 ```bash
 curl http://localhost:8000/bananas
-curl "http://localhost:8000/bananas?cursor=opaque-cursor"
 ```
 
 **Deploy:** `make init` (first time), then `export AWS_CF_TOKEN=… && make deploy`. CI (`.github/workflows/go.yml`) tests, builds, deploys on push to `main`.

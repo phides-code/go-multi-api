@@ -6,7 +6,7 @@ Full walkthrough: [Adding a new table](../README.md#adding-a-new-table).
 
 ## TDD order
 
-1. **Failing handler test** — one vertical slice (e.g. `GET /apples` → empty page) with a mock repo in `internal/<resource>/`.
+1. **Failing handler test** — one vertical slice (e.g. `GET /apples` → empty list) with a mock repo in `internal/<resource>/`.
 2. **Router integration test** — `Register("<resources>", …)` in `internal/<resource>/router_test.go`.
 3. **Entity + validation tests** — `internal/<resource>/<resource>_test.go`.
 4. **Handler** — minimum code to pass step 1; expand tests per method.
@@ -23,7 +23,7 @@ Copy `internal/banana/` → `internal/<resource>/` and rename. One package per r
 | File | Reference (banana) |
 | ---- | ---------------- |
 | `internal/<resource>/<resource>.go` | `banana.go` — entity, validation, content bounds (`MinContentLength` / `MaxContentLength`) |
-| `internal/<resource>/repository.go` | `repository.go` — `Repository` interface + list `Page` type |
+| `internal/<resource>/repository.go` | `repository.go` — `Repository` interface |
 | `internal/<resource>/handler.go` | `handler.go` — HTTP handler; `NewHandler(repo, logger)` |
 | `internal/<resource>/dynamodb.go` | `dynamodb.go` — `NewRepository(client)` DynamoDB impl |
 | `internal/<resource>/<resource>_test.go` | `banana_test.go` — validation tests |
@@ -40,7 +40,7 @@ Copy `internal/banana/` → `internal/<resource>/` and rename. One package per r
 
 | Package / file | Purpose |
 | ---- | ------- |
-| `internal/domain/` | Cross-cutting only: `errors.go`, `id.go`, `validation.go`, `pagination.go` |
+| `internal/domain/` | Cross-cutting only: `errors.go`, `id.go`, `validation.go` |
 | `internal/gateway/gateway.go` | Auth gate + path routing; `Register(prefix, ResourceHandler)` |
 | `internal/platform/` | Response envelope, error mapping, logging, auth header |
 | `internal/testutil/consts.go` | `TestCFTToken` for gateway and composition tests |

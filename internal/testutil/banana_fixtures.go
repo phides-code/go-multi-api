@@ -15,9 +15,9 @@ const TestBananaContent = "ripe"
 const TestStoredBananaCreatedOn uint64 = 12345
 
 const (
-	ListBananaContentFirst   = "first"
-	ListBananaContentSecond  = "second"
-	ListBananaContentPage2   = "page2"
+	ListBananaContentFirst  = "first"
+	ListBananaContentSecond = "second"
+	ListBananaContentThird  = "third"
 )
 
 // BananaWithID returns a banana whose ID matches the returned id string.
@@ -32,16 +32,16 @@ func BananaCreateBody(content string) string {
 	return fmt.Sprintf(`{"content":%q}`, content)
 }
 
-// ListBananaPage returns two list items and a third for cursor follow-up tests.
+// ListBananas returns three list items for repository list tests.
 // When withTimestamps is true, CreatedOn is set to 1, 2, and 3 respectively.
-func ListBananaPage(withTimestamps bool) (first, second, page2 banana.Banana) {
+func ListBananas(withTimestamps bool) (first, second, third banana.Banana) {
 	first = banana.Banana{ID: uuid.NewString(), Content: ListBananaContentFirst}
 	second = banana.Banana{ID: uuid.NewString(), Content: ListBananaContentSecond}
-	page2 = banana.Banana{ID: uuid.NewString(), Content: ListBananaContentPage2}
+	third = banana.Banana{ID: uuid.NewString(), Content: ListBananaContentThird}
 	if withTimestamps {
 		first.CreatedOn = 1
 		second.CreatedOn = 2
-		page2.CreatedOn = 3
+		third.CreatedOn = 3
 	}
 	return
 }

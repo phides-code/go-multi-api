@@ -22,7 +22,6 @@ var clientErrorMappings = []clientErrorMapping{
 	{domain.ErrInvalidID, http.StatusBadRequest},
 	{domain.ErrValidationFailed, http.StatusBadRequest},
 	{domain.ErrInvalidJSON, http.StatusBadRequest},
-	{domain.ErrInvalidCursor, http.StatusBadRequest},
 	{domain.ErrNotFound, http.StatusNotFound},
 	{domain.ErrAlreadyExists, http.StatusConflict},
 	{domain.ErrMethodNotAllowed, http.StatusMethodNotAllowed},

@@ -11,5 +11,4 @@ var (
 	ErrInvalidJSON      = errors.New("invalid json")
 	ErrMethodNotAllowed = errors.New("method not allowed")
 	ErrAlreadyExists    = errors.New("already exists")
-	ErrInvalidCursor    = errors.New("invalid cursor")
 )

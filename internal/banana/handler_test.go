@@ -404,67 +404,27 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 func TestBananaHandlerList(t *testing.T) {
 	t.Parallel()
 
-	bananaOne, bananaTwo, page2Item := testutil.ListBananaPage(false)
+	bananaOne, bananaTwo, _ := testutil.ListBananas(false)
 	wantItems := []banana.Banana{bananaOne, bananaTwo}
-	nextCursor := "abc123"
 
 	tests := []struct {
-		name           string
-		wantStatus     int
-		wantItems      []banana.Banana
-		wantErrorMsg   string
-		wantNextCursor string
-		setupRepo      func() *mockBananaRepository
-		queryCursor    string
+		name         string
+		wantStatus   int
+		wantItems    []banana.Banana
+		wantErrorMsg string
+		setupRepo    func() *mockBananaRepository
 	}{
 		{
-			name:           "GET list returns items",
-			wantStatus:     http.StatusOK,
-			wantItems:      wantItems,
-			wantErrorMsg:   "",
-			wantNextCursor: "",
-			setupRepo:      func() *mockBananaRepository { return listBananaRepo(wantItems) },
+			name:       "GET list returns items",
+			wantStatus: http.StatusOK,
+			wantItems:  wantItems,
+			setupRepo:  func() *mockBananaRepository { return listBananaRepo(wantItems) },
 		},
 		{
-			name:           "GET list empty",
-			wantStatus:     http.StatusOK,
-			wantItems:      []banana.Banana{},
-			wantErrorMsg:   "",
-			wantNextCursor: "",
-			setupRepo:      func() *mockBananaRepository { return listBananaRepo([]banana.Banana{}) },
-		},
-		{
-			name:           "GET list returns next cursor",
-			wantStatus:     http.StatusOK,
-			wantItems:      wantItems,
-			wantErrorMsg:   "",
-			wantNextCursor: nextCursor,
-			setupRepo: func() *mockBananaRepository {
-				return &mockBananaRepository{
-					listFn: func(_ context.Context, opts domain.ListOptions) (banana.Page, error) {
-						return banana.Page{
-							Items:      wantItems,
-							NextCursor: nextCursor,
-						}, nil
-					},
-				}
-			},
-		},
-		{
-			name:        "GET list passes cursor query param",
-			wantStatus:  http.StatusOK,
-			wantItems:   []banana.Banana{page2Item},
-			queryCursor: nextCursor,
-			setupRepo: func() *mockBananaRepository {
-				return &mockBananaRepository{
-					listFn: func(_ context.Context, opts domain.ListOptions) (banana.Page, error) {
-						if opts.Cursor != nextCursor {
-							return banana.Page{}, errors.New("wrong cursor")
-						}
-						return banana.Page{Items: []banana.Banana{page2Item}}, nil
-					},
-				}
-			},
+			name:       "GET list empty",
+			wantStatus: http.StatusOK,
+			wantItems:  []banana.Banana{},
+			setupRepo:  func() *mockBananaRepository { return listBananaRepo([]banana.Banana{}) },
 		},
 		{
 			name:         "GET list repo failure",
@@ -472,21 +432,8 @@ func TestBananaHandlerList(t *testing.T) {
 			wantErrorMsg: platform.InternalServerErrorMessage,
 			setupRepo: func() *mockBananaRepository {
 				return &mockBananaRepository{
-					listFn: func(_ context.Context, _ domain.ListOptions) (banana.Page, error) {
-						return banana.Page{}, errors.New("db down")
-					},
-				}
-			},
-		},
-		{
-			name:         "GET list invalid cursor",
-			wantStatus:   http.StatusBadRequest,
-			wantErrorMsg: "invalid cursor",
-			queryCursor:  "!!!not-base64!!!",
-			setupRepo: func() *mockBananaRepository {
-				return &mockBananaRepository{
-					listFn: func(_ context.Context, _ domain.ListOptions) (banana.Page, error) {
-						return banana.Page{}, domain.ErrInvalidCursor
+					listFn: func(_ context.Context) ([]banana.Banana, error) {
+						return nil, errors.New("db down")
 					},
 				}
 			},
@@ -499,17 +446,9 @@ func TestBananaHandlerList(t *testing.T) {
 
 			h := banana.NewHandler(tt.setupRepo(), platform.NewLogger())
 
-			req := events.APIGatewayProxyRequest{
+			resp, err := h.Handle(context.Background(), events.APIGatewayProxyRequest{
 				HTTPMethod: http.MethodGet,
-			}
-
-			if tt.queryCursor != "" {
-				req.QueryStringParameters = map[string]string{
-					"cursor": tt.queryCursor,
-				}
-			}
-
-			resp, err := h.Handle(context.Background(), req)
+			})
 			if err != nil {
 				t.Fatalf("handle: %v", err)
 			}
@@ -521,20 +460,16 @@ func TestBananaHandlerList(t *testing.T) {
 				return
 			}
 
-			page := decodeBananaPageData(t, envelope)
+			items := decodeBananaListData(t, envelope)
 
-			if len(page.Items) != len(tt.wantItems) {
-				t.Fatalf("len(page.Items) = %d, want %d", len(page.Items), len(tt.wantItems))
+			if len(items) != len(tt.wantItems) {
+				t.Fatalf("len(items) = %d, want %d", len(items), len(tt.wantItems))
 			}
 
 			for i := range tt.wantItems {
-				if page.Items[i] != tt.wantItems[i] {
-					t.Fatalf("items[%d] = %+v, want %+v", i, page.Items[i], tt.wantItems[i])
+				if items[i] != tt.wantItems[i] {
+					t.Fatalf("items[%d] = %+v, want %+v", i, items[i], tt.wantItems[i])
 				}
-			}
-
-			if page.NextCursor != tt.wantNextCursor {
-				t.Fatalf("nextCursor = %q, want %q", page.NextCursor, tt.wantNextCursor)
 			}
 		})
 	}

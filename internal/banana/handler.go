@@ -41,18 +41,13 @@ func (h *Handler) Handle(ctx context.Context, req events.APIGatewayProxyRequest)
 	}
 }
 
-func (h *Handler) list(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	cursor := strings.TrimSpace(req.QueryStringParameters["cursor"])
-
-	page, err := h.repo.List(ctx, domain.ListOptions{
-		Limit:  domain.DefaultListLimit,
-		Cursor: cursor,
-	})
+func (h *Handler) list(ctx context.Context, _ events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	items, err := h.repo.List(ctx)
 	if err != nil {
 		return h.errorResponse(ctx, err, "list bananas")
 	}
 
-	return platform.SuccessResponse(200, page)
+	return platform.SuccessResponse(200, items)
 }
 
 func (h *Handler) getByID(ctx context.Context, id string) (events.APIGatewayProxyResponse, error) {

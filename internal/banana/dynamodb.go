@@ -3,8 +3,6 @@ package banana
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -78,48 +76,38 @@ func (r *dynamoRepository) GetByID(ctx context.Context, id string) (Banana, erro
 	return banana, nil
 }
 
-func (r *dynamoRepository) List(ctx context.Context, opts domain.ListOptions) (Page, error) {
-	limit := opts.Limit
-	if limit <= 0 {
-		limit = domain.DefaultListLimit
-	}
+func (r *dynamoRepository) List(ctx context.Context) ([]Banana, error) {
+	var items []Banana
+	var startKey map[string]types.AttributeValue
 
-	input := &dynamodb.ScanInput{
-		TableName: aws.String(tableName),
-		Limit:     aws.Int32(limit),
-	}
+	for {
+		input := &dynamodb.ScanInput{
+			TableName: aws.String(tableName),
+		}
+		if startKey != nil {
+			input.ExclusiveStartKey = startKey
+		}
 
-	if opts.Cursor != "" {
-		startKey, err := decodeCursor(opts.Cursor)
+		out, err := r.client.Scan(ctx, input)
 		if err != nil {
-			return Page{}, domain.ErrInvalidCursor
+			return nil, fmt.Errorf("scan items: %w", err)
 		}
-		input.ExclusiveStartKey = startKey
-	}
 
-	out, err := r.client.Scan(ctx, input)
-	if err != nil {
-		return Page{}, fmt.Errorf("scan items: %w", err)
-	}
-
-	items := make([]Banana, 0, len(out.Items))
-	for _, item := range out.Items {
-		var banana Banana
-		if err := attributevalue.UnmarshalMap(item, &banana); err != nil {
-			return Page{}, fmt.Errorf("unmarshal banana: %w", err)
+		for _, item := range out.Items {
+			var banana Banana
+			if err := attributevalue.UnmarshalMap(item, &banana); err != nil {
+				return nil, fmt.Errorf("unmarshal banana: %w", err)
+			}
+			items = append(items, banana)
 		}
-		items = append(items, banana)
-	}
 
-	page := Page{Items: items}
-	if out.LastEvaluatedKey != nil {
-		page.NextCursor, err = encodeCursor(out.LastEvaluatedKey)
-		if err != nil {
-			return Page{}, fmt.Errorf("encode cursor: %w", err)
+		if out.LastEvaluatedKey == nil {
+			break
 		}
+		startKey = out.LastEvaluatedKey
 	}
 
-	return page, nil
+	return items, nil
 }
 
 func (r *dynamoRepository) Update(ctx context.Context, banana Banana) (Banana, error) {
@@ -175,36 +163,3 @@ func (r *dynamoRepository) Delete(ctx context.Context, id string) (Banana, error
 	return deleted, nil
 }
 
-func encodeCursor(key map[string]types.AttributeValue) (string, error) {
-	idVal, ok := key["id"].(*types.AttributeValueMemberS)
-	if !ok {
-		return "", fmt.Errorf("missing id in cursor")
-	}
-
-	raw, err := json.Marshal(map[string]string{"id": idVal.Value})
-	if err != nil {
-		return "", err
-	}
-	return base64.StdEncoding.EncodeToString(raw), nil
-}
-
-func decodeCursor(cursor string) (map[string]types.AttributeValue, error) {
-	raw, err := base64.StdEncoding.DecodeString(cursor)
-	if err != nil {
-		return nil, err
-	}
-
-	var parsed map[string]string
-	if err := json.Unmarshal(raw, &parsed); err != nil {
-		return nil, err
-	}
-
-	id, ok := parsed["id"]
-	if !ok {
-		return nil, fmt.Errorf("missing id in cursor")
-	}
-
-	return map[string]types.AttributeValue{
-		"id": &types.AttributeValueMemberS{Value: id},
-	}, nil
-}

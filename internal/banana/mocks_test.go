@@ -3,7 +3,6 @@ package banana_test
 
 import (
 	"context"
-	"errors"
 
 	"github.com/phides-code/go-multi-api/internal/banana"
 	"github.com/phides-code/go-multi-api/internal/domain"
@@ -12,7 +11,7 @@ import (
 type mockBananaRepository struct {
 	createFn func(ctx context.Context, b banana.Banana) (banana.Banana, error)
 	getFn    func(ctx context.Context, id string) (banana.Banana, error)
-	listFn   func(ctx context.Context, opts domain.ListOptions) (banana.Page, error)
+	listFn   func(ctx context.Context) ([]banana.Banana, error)
 	updateFn func(ctx context.Context, b banana.Banana) (banana.Banana, error)
 	deleteFn func(ctx context.Context, id string) (banana.Banana, error)
 }
@@ -25,8 +24,8 @@ func (m *mockBananaRepository) GetByID(ctx context.Context, id string) (banana.B
 	return m.getFn(ctx, id)
 }
 
-func (m *mockBananaRepository) List(ctx context.Context, opts domain.ListOptions) (banana.Page, error) {
-	return m.listFn(ctx, opts)
+func (m *mockBananaRepository) List(ctx context.Context) ([]banana.Banana, error) {
+	return m.listFn(ctx)
 }
 
 func (m *mockBananaRepository) Update(ctx context.Context, b banana.Banana) (banana.Banana, error) {
@@ -45,8 +44,8 @@ func emptyBananaRepo() *mockBananaRepository {
 		getFn: func(_ context.Context, _ string) (banana.Banana, error) {
 			return banana.Banana{}, nil
 		},
-		listFn: func(_ context.Context, _ domain.ListOptions) (banana.Page, error) {
-			return banana.Page{}, nil
+		listFn: func(_ context.Context) ([]banana.Banana, error) {
+			return nil, nil
 		},
 		updateFn: func(_ context.Context, _ banana.Banana) (banana.Banana, error) {
 			return banana.Banana{}, nil
@@ -63,8 +62,8 @@ func dispatchBananaRepo() *mockBananaRepository {
 		getFn: func(_ context.Context, gotID string) (banana.Banana, error) {
 			return banana.Banana{ID: gotID, Content: "found"}, nil
 		},
-		listFn: func(_ context.Context, _ domain.ListOptions) (banana.Page, error) {
-			return banana.Page{}, nil
+		listFn: func(_ context.Context) ([]banana.Banana, error) {
+			return nil, nil
 		},
 		createFn: func(_ context.Context, b banana.Banana) (banana.Banana, error) {
 			return b, nil
@@ -80,11 +79,8 @@ func dispatchBananaRepo() *mockBananaRepository {
 
 func listBananaRepo(items []banana.Banana) *mockBananaRepository {
 	return &mockBananaRepository{
-		listFn: func(_ context.Context, opts domain.ListOptions) (banana.Page, error) {
-			if opts.Limit != domain.DefaultListLimit {
-				return banana.Page{}, errors.New("wrong limit")
-			}
-			return banana.Page{Items: items}, nil
+		listFn: func(_ context.Context) ([]banana.Banana, error) {
+			return items, nil
 		},
 	}
 }
@@ -113,9 +109,9 @@ func panicBananaRepo() *mockBananaRepository {
 			panicFn()
 			return banana.Banana{}, nil
 		},
-		listFn: func(context.Context, domain.ListOptions) (banana.Page, error) {
+		listFn: func(context.Context) ([]banana.Banana, error) {
 			panicFn()
-			return banana.Page{}, nil
+			return nil, nil
 		},
 		updateFn: func(context.Context, banana.Banana) (banana.Banana, error) {
 			panicFn()
