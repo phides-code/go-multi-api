@@ -8,6 +8,8 @@ import (
 	"github.com/phides-code/go-multi-api/internal/banana"
 )
 
+const validContent = "hello"
+
 func TestValidateCreateInput(t *testing.T) {
 	t.Parallel()
 
@@ -16,7 +18,7 @@ func TestValidateCreateInput(t *testing.T) {
 		input   banana.CreateInput
 		wantErr bool
 	}{
-		{name: "valid", input: banana.CreateInput{Content: "hello"}, wantErr: false},
+		{name: "valid", input: banana.CreateInput{Content: validContent}, wantErr: false},
 		{name: "empty content", input: banana.CreateInput{Content: ""}, wantErr: true},
 	}
 
@@ -46,8 +48,8 @@ func TestValidateUpdateInput(t *testing.T) {
 		input   banana.UpdateInput
 		wantErr bool
 	}{
-		{name: "valid", input: banana.UpdateInput{ID: validID, Content: "hello"}, wantErr: false},
-		{name: "invalid id", input: banana.UpdateInput{ID: "bad", Content: "hello"}, wantErr: true},
+		{name: "valid", input: banana.UpdateInput{ID: validID, Content: validContent}, wantErr: false},
+		{name: "invalid id", input: banana.UpdateInput{ID: "bad", Content: validContent}, wantErr: true},
 		{name: "empty content", input: banana.UpdateInput{ID: validID, Content: ""}, wantErr: true},
 	}
 
