@@ -3,11 +3,6 @@ package banana
 
 import "github.com/phides-code/go-multi-api/internal/domain"
 
-const (
-	MinContentLength = 1
-	MaxContentLength = 1000
-)
-
 type Banana struct {
 	ID        string `json:"id" dynamodbav:"id"`
 	Content   string `json:"content" dynamodbav:"content"`
@@ -24,7 +19,7 @@ type UpdateInput struct {
 }
 
 func validateContent(content string) error {
-	return domain.ValidateRequiredString(content, MinContentLength, MaxContentLength)
+	return domain.ValidateRequiredString(content, domain.DefaultMinStringLength, domain.DefaultMaxStringLength)
 }
 
 func ValidateCreateInput(input CreateInput) error {

@@ -22,7 +22,7 @@ Copy `internal/banana/` → `internal/<resource>/` and rename. One package per r
 
 | File | Reference (banana) |
 | ---- | ---------------- |
-| `internal/<resource>/<resource>.go` | `banana.go` — entity, validation, content bounds (`MinContentLength` / `MaxContentLength`) |
+| `internal/<resource>/<resource>.go` | `banana.go` — entity, validation (default string bounds from `domain`) |
 | `internal/<resource>/repository.go` | `repository.go` — `Repository` interface |
 | `internal/<resource>/handler.go` | `handler.go` — HTTP handler; `NewHandler(repo, logger)` |
 | `internal/<resource>/dynamodb.go` | `dynamodb.go` — `NewRepository(client)` DynamoDB impl |
@@ -83,7 +83,7 @@ Shared `domain/` and `platform/` stay resource-neutral.
 - Handler tests: `testutil.RequireStatusAndEnvelope`, `testutil.AssertAPIError`; mock repo in `mocks_test.go`.
 - DynamoDB tests: `setupMock func(t *testing.T) *mockDynamoClient`; `storedBananaFixture(t)` for Get/Delete; `assertBananaRepoResult`, `assertBananaPutItem` in `assert_test.go`; `testutil.AssertUpdateSets` on update success.
 - Gateway integration: `router_test.go` in the resource package registers with `gateway.NewGatewayWithCFTToken`.
-- Validation bounds: `MinContentLength` / `MaxContentLength` in `<resource>.go`.
+- Validation bounds: use `domain.DefaultMinStringLength` / `DefaultMaxStringLength` unless the field opts out.
 - Avoid naming a function parameter `banana` when the package is `banana` — use `b` instead (shadowing breaks `banana.Banana{}` zero values).
 
 ## Before PR

@@ -368,7 +368,7 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 		{
 			name:         "POST content too long",
 			method:       "POST",
-			body:         fmt.Sprintf(`{"content":%q}`, strings.Repeat("a", banana.MaxContentLength+1)),
+			body:         fmt.Sprintf(`{"content":%q}`, strings.Repeat("a", domain.DefaultMaxStringLength+1)),
 			wantStatus:   http.StatusBadRequest,
 			wantErrorMsg: "validation failed",
 			setupRepo:    panicBananaRepo,
@@ -576,7 +576,7 @@ func TestBananaHandlerUpdate(t *testing.T) {
 		{
 			name:         "PUT content too long",
 			pathID:       validUuid,
-			body:         fmt.Sprintf(`{"content":%q}`, strings.Repeat("a", banana.MaxContentLength+1)),
+			body:         fmt.Sprintf(`{"content":%q}`, strings.Repeat("a", domain.DefaultMaxStringLength+1)),
 			wantStatus:   http.StatusBadRequest,
 			wantBanana:   nil,
 			wantErrorMsg: "validation failed",

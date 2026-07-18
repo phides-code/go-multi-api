@@ -82,7 +82,7 @@ Return `ErrValidationFailed` from validation; no per-field error strings unless 
 
 **List** (`GET /bananas`): `data` is an array of item shape. The repository scans the full table (DynamoDB pagination is handled internally, not exposed over HTTP).
 
-**Validation:** `content` required on create/update, 1–1000 Unicode characters (`MinContentLength`–`MaxContentLength` in `internal/banana/banana.go`) → 400 `validation failed`. Path `{id}` must be UUID → 400 `invalid id`.
+**Validation:** `content` required on create/update, 1–100 Unicode characters (default string bounds: `domain.DefaultMinStringLength`–`DefaultMaxStringLength`) → 400 `validation failed`. Path `{id}` must be UUID → 400 `invalid id`.
 
 ## Development
 

@@ -11,8 +11,6 @@ import (
 func TestValidateRequiredString(t *testing.T) {
 	t.Parallel()
 
-	const minLen, maxLen = 1, 1000
-
 	tests := []struct {
 		name    string
 		value   string
@@ -21,14 +19,14 @@ func TestValidateRequiredString(t *testing.T) {
 		{name: "valid", value: "hello", wantErr: false},
 		{name: "empty", value: "", wantErr: true},
 		{name: "whitespace", value: "   ", wantErr: true},
-		{name: "max length", value: strings.Repeat("a", maxLen), wantErr: false},
-		{name: "too long", value: strings.Repeat("a", maxLen+1), wantErr: true},
+		{name: "max length", value: strings.Repeat("a", domain.DefaultMaxStringLength), wantErr: false},
+		{name: "too long", value: strings.Repeat("a", domain.DefaultMaxStringLength+1), wantErr: true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			err := domain.ValidateRequiredString(tt.value, minLen, maxLen)
+			err := domain.ValidateRequiredString(tt.value, domain.DefaultMinStringLength, domain.DefaultMaxStringLength)
 			if tt.wantErr && err == nil {
 				t.Fatal("expected error")
 			}

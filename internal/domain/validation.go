@@ -6,6 +6,12 @@ import (
 	"unicode/utf8"
 )
 
+// Default rune length bounds for required strings unless a resource opts out.
+const (
+	DefaultMinStringLength = 1
+	DefaultMaxStringLength = 100
+)
+
 // ValidateRequiredString rejects blank values (after trim) and enforces rune length bounds.
 func ValidateRequiredString(s string, minLen, maxLen int) error {
 	if strings.TrimSpace(s) == "" {
