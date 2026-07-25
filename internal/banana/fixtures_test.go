@@ -38,7 +38,7 @@ func newBananaValidationBodies(t *testing.T) bananaValidationBodies {
 // existingBananaFixture returns an ID-linked banana and matching PUT body for get/update/delete tests.
 func existingBananaFixture(t *testing.T) (id string, b banana.Banana, updateBody string) {
 	t.Helper()
-	id, b = testutil.BananaWithID(testutil.TestBananaContent, 0)
+	id, b = testutil.BananaWithID(testutil.ValidBananaBody(), 0)
 	updateBody = testutil.ValidBananaBody().JSON(t)
 	return
 }

@@ -12,7 +12,7 @@ import (
 
 func storedBananaFixture(t *testing.T) (id string, b banana.Banana, item map[string]types.AttributeValue) {
 	t.Helper()
-	id, b = testutil.BananaWithID(testutil.TestBananaContent, testutil.TestStoredBananaCreatedOn)
+	id, b = testutil.BananaWithID(testutil.ValidBananaBody(), testutil.TestStoredBananaCreatedOn)
 	var err error
 	item, err = attributevalue.MarshalMap(b)
 	if err != nil {

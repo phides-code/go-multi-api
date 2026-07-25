@@ -81,6 +81,7 @@ Shared `domain/` and `platform/` stay resource-neutral.
 
 - Package: production code in `package <resource>`; tests in `package <resource>_test`.
 - Handler tests: `testutil.RequireStatusAndEnvelope`, `testutil.AssertAPIError`; mock repo in `mocks_test.go`. Shared request payloads: `testutil.<Resource>Body` / `Valid<Resource>Body()` / `.JSON(t)` (independent of the entity so tag regressions fail). Reuse package-local `new<Resource>ValidationBodies(t)` for empty/whitespace/too-long samples across POST and PUT.
+- Entity fixtures: `testutil.<Resource>WithID(Valid<Resource>Body(), createdOn)` — client fields via named body struct, not positional args.
 - DynamoDB tests: `setupMock func(t *testing.T) *mockDynamoClient`; `storedBananaFixture(t)` for Get/Delete; `assertBananaRepoResult`, `assertBananaPutItem` in `assert_test.go`; `testutil.AssertUpdateSets` on update success.
 - Gateway integration: `router_test.go` in the resource package registers with `gateway.NewGatewayWithCFTToken`.
 - Validation tests: define `validCreateInput` / `validUpdateInput` as local funcs inside each test; clone and tweak one field per case. Prefer `testutil` canonical values over package-local literals.

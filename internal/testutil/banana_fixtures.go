@@ -43,11 +43,12 @@ func (b BananaBody) JSON(t *testing.T) string {
 }
 
 // BananaWithID returns a banana whose ID matches the returned id string.
-func BananaWithID(content string, createdOn uint64) (id string, b banana.Banana) {
+// Pass a BananaBody (or ValidBananaBody()) so client fields stay named.
+func BananaWithID(body BananaBody, createdOn uint64) (id string, b banana.Banana) {
 	id = uuid.NewString()
 	b = banana.Banana{
 		ID:        id,
-		Content:   content,
+		Content:   body.Content,
 		CreatedOn: createdOn,
 	}
 	return
