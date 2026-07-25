@@ -4,9 +4,7 @@ package banana_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
-	"strings"
 	"testing"
 	"time"
 
@@ -20,7 +18,7 @@ import (
 func TestBananaHandlerCreate(t *testing.T) {
 	t.Parallel()
 
-	validCreateBody := testutil.BananaCreateBody(testutil.TestBananaContent)
+	validCreateBody := testutil.ValidBananaBody().JSON(t)
 
 	tests := []struct {
 		name         string
@@ -116,7 +114,7 @@ func TestBananaHandlerCreate(t *testing.T) {
 func TestBananaHandlerDelete(t *testing.T) {
 	t.Parallel()
 
-	validUuid, deletedBanana, _ := existingBananaFixture()
+	validUuid, deletedBanana, _ := existingBananaFixture(t)
 
 	tests := []struct {
 		name         string
@@ -221,7 +219,7 @@ func TestBananaHandlerDelete(t *testing.T) {
 func TestBananaHandlerGetByID(t *testing.T) {
 	t.Parallel()
 
-	validUuid, validBanana, _ := existingBananaFixture()
+	validUuid, validBanana, _ := existingBananaFixture(t)
 
 	tests := []struct {
 		name         string
@@ -327,6 +325,8 @@ func TestBananaHandlerGetByID(t *testing.T) {
 func TestBananaHandlerClientErrors(t *testing.T) {
 	t.Parallel()
 
+	validationBodies := newBananaValidationBodies(t)
+
 	tests := []struct {
 		name         string
 		method       string
@@ -345,7 +345,7 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 		{
 			name:         "POST empty content",
 			method:       "POST",
-			body:         "{\"content\":\"\"}",
+			body:         validationBodies.bananaWithEmptyValue,
 			wantStatus:   http.StatusBadRequest,
 			wantErrorMsg: "validation failed",
 			setupRepo:    panicBananaRepo,
@@ -360,7 +360,7 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 		{
 			name:         "POST whitespace content",
 			method:       "POST",
-			body:         `{"content":"   "}`,
+			body:         validationBodies.bananaWithWhitespace,
 			wantStatus:   http.StatusBadRequest,
 			wantErrorMsg: "validation failed",
 			setupRepo:    panicBananaRepo,
@@ -368,7 +368,7 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 		{
 			name:         "POST content too long",
 			method:       "POST",
-			body:         fmt.Sprintf(`{"content":%q}`, strings.Repeat("a", domain.DefaultMaxStringLength+1)),
+			body:         validationBodies.bananaWithValueTooLong,
 			wantStatus:   http.StatusBadRequest,
 			wantErrorMsg: "validation failed",
 			setupRepo:    panicBananaRepo,
@@ -478,7 +478,8 @@ func TestBananaHandlerList(t *testing.T) {
 func TestBananaHandlerUpdate(t *testing.T) {
 	t.Parallel()
 
-	validUuid, updatedBanana, validUpdateBody := existingBananaFixture()
+	validUuid, updatedBanana, validUpdateBody := existingBananaFixture(t)
+	validationBodies := newBananaValidationBodies(t)
 
 	tests := []struct {
 		name         string
@@ -525,7 +526,7 @@ func TestBananaHandlerUpdate(t *testing.T) {
 		{
 			name:         "PUT empty content",
 			pathID:       validUuid,
-			body:         `{"content":""}`,
+			body:         validationBodies.bananaWithEmptyValue,
 			wantStatus:   http.StatusBadRequest,
 			wantBanana:   nil,
 			wantErrorMsg: "validation failed",
@@ -567,7 +568,7 @@ func TestBananaHandlerUpdate(t *testing.T) {
 		{
 			name:         "PUT whitespace content",
 			pathID:       validUuid,
-			body:         `{"content":"   "}`,
+			body:         validationBodies.bananaWithWhitespace,
 			wantStatus:   http.StatusBadRequest,
 			wantBanana:   nil,
 			wantErrorMsg: "validation failed",
@@ -576,7 +577,7 @@ func TestBananaHandlerUpdate(t *testing.T) {
 		{
 			name:         "PUT content too long",
 			pathID:       validUuid,
-			body:         fmt.Sprintf(`{"content":%q}`, strings.Repeat("a", domain.DefaultMaxStringLength+1)),
+			body:         validationBodies.bananaWithValueTooLong,
 			wantStatus:   http.StatusBadRequest,
 			wantBanana:   nil,
 			wantErrorMsg: "validation failed",
