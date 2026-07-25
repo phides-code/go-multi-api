@@ -83,6 +83,7 @@ Shared `domain/` and `platform/` stay resource-neutral.
 - Handler tests: `testutil.RequireStatusAndEnvelope`, `testutil.AssertAPIError`; mock repo in `mocks_test.go`.
 - DynamoDB tests: `setupMock func(t *testing.T) *mockDynamoClient`; `storedBananaFixture(t)` for Get/Delete; `assertBananaRepoResult`, `assertBananaPutItem` in `assert_test.go`; `testutil.AssertUpdateSets` on update success.
 - Gateway integration: `router_test.go` in the resource package registers with `gateway.NewGatewayWithCFTToken`.
+- Validation tests: define `validCreateInput` / `validUpdateInput` as local funcs inside each test; clone and tweak one field per case. Prefer `testutil` canonical values over package-local literals.
 - Validation bounds: use `domain.DefaultMinStringLength` / `DefaultMaxStringLength` unless the field opts out.
 - Avoid naming a function parameter `banana` when the package is `banana` — use `b` instead (shadowing breaks `banana.Banana{}` zero values).
 

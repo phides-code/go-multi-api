@@ -6,20 +6,33 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/phides-code/go-multi-api/internal/banana"
+	"github.com/phides-code/go-multi-api/internal/testutil"
 )
-
-const validContent = "hello"
 
 func TestValidateCreateInput(t *testing.T) {
 	t.Parallel()
+
+	validCreateInput := func() banana.CreateInput {
+		return banana.CreateInput{
+			Content: testutil.TestBananaContent,
+		}
+	}
 
 	tests := []struct {
 		name    string
 		input   banana.CreateInput
 		wantErr bool
 	}{
-		{name: "valid", input: banana.CreateInput{Content: validContent}, wantErr: false},
-		{name: "empty content", input: banana.CreateInput{Content: ""}, wantErr: true},
+		{name: "valid", input: validCreateInput(), wantErr: false},
+		{
+			name: "empty content",
+			input: func() banana.CreateInput {
+				in := validCreateInput()
+				in.Content = ""
+				return in
+			}(),
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -43,14 +56,37 @@ func TestValidateUpdateInput(t *testing.T) {
 
 	validID := uuid.NewString()
 
+	validUpdateInput := func() banana.UpdateInput {
+		return banana.UpdateInput{
+			ID:      validID,
+			Content: testutil.TestBananaContent,
+		}
+	}
+
 	tests := []struct {
 		name    string
 		input   banana.UpdateInput
 		wantErr bool
 	}{
-		{name: "valid", input: banana.UpdateInput{ID: validID, Content: validContent}, wantErr: false},
-		{name: "invalid id", input: banana.UpdateInput{ID: "bad", Content: validContent}, wantErr: true},
-		{name: "empty content", input: banana.UpdateInput{ID: validID, Content: ""}, wantErr: true},
+		{name: "valid", input: validUpdateInput(), wantErr: false},
+		{
+			name: "invalid id",
+			input: func() banana.UpdateInput {
+				in := validUpdateInput()
+				in.ID = "bad"
+				return in
+			}(),
+			wantErr: true,
+		},
+		{
+			name: "empty content",
+			input: func() banana.UpdateInput {
+				in := validUpdateInput()
+				in.Content = ""
+				return in
+			}(),
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {

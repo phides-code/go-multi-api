@@ -106,7 +106,7 @@ Extend an existing resource (e.g. add `description` to `Banana`). **TDD:** faili
 
 | Step | What | Files |
 | ---- | ---- | ----- |
-| 1 | **Validation tests** — wiring row in create/update input tests (`domain/validation_test.go` already covers generic string rules). | `internal/<resource>/<resource>_test.go` |
+| 1 | **Validation tests** — local `validCreateInput` / `validUpdateInput` helpers inside each test; add a wiring row that blanks the new field (or otherwise breaks it). `domain/validation_test.go` already covers generic string rules. | `internal/<resource>/<resource>_test.go` |
 | 2 | **Struct + validation** — field on entity + `json`/`dynamodbav` tags; add to create/update inputs if client-set; wire `domain.ValidateRequiredString` or custom rules. Server-owned fields: set in handler/dynamodb, not inputs. | `internal/<resource>/<resource>.go` |
 | 3 | **Handler tests** — client-error rows (400 `validation failed`; use `panic<Resource>Repo`); success + `assert<Resource>DataKeys` if wire shape changes. | `internal/<resource>/handler_test.go`, `mocks_test.go`, `assert_test.go` |
 | 4 | **Handler** — parse JSON, validate, call repo. | `internal/<resource>/handler.go` |
