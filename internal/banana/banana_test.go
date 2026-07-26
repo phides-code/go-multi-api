@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/phides-code/go-multi-api/internal/banana"
+	"github.com/phides-code/go-multi-api/internal/domain"
 	"github.com/phides-code/go-multi-api/internal/testutil"
 )
 
@@ -14,7 +15,8 @@ func TestValidateCreateInput(t *testing.T) {
 
 	validCreateInput := func() banana.CreateInput {
 		return banana.CreateInput{
-			Color: testutil.TestBananaColor,
+			Color:  testutil.TestBananaColor,
+			Rating: testutil.TestBananaRating,
 		}
 	}
 
@@ -29,6 +31,24 @@ func TestValidateCreateInput(t *testing.T) {
 			input: func() banana.CreateInput {
 				in := validCreateInput()
 				in.Color = ""
+				return in
+			}(),
+			wantErr: true,
+		},
+		{
+			name: "rating below min",
+			input: func() banana.CreateInput {
+				in := validCreateInput()
+				in.Rating = domain.DefaultMinInt - 1
+				return in
+			}(),
+			wantErr: true,
+		},
+		{
+			name: "rating above max",
+			input: func() banana.CreateInput {
+				in := validCreateInput()
+				in.Rating = domain.DefaultMaxInt + 1
 				return in
 			}(),
 			wantErr: true,
@@ -58,8 +78,9 @@ func TestValidateUpdateInput(t *testing.T) {
 
 	validUpdateInput := func() banana.UpdateInput {
 		return banana.UpdateInput{
-			ID:    validID,
-			Color: testutil.TestBananaColor,
+			ID:     validID,
+			Color:  testutil.TestBananaColor,
+			Rating: testutil.TestBananaRating,
 		}
 	}
 
@@ -83,6 +104,24 @@ func TestValidateUpdateInput(t *testing.T) {
 			input: func() banana.UpdateInput {
 				in := validUpdateInput()
 				in.Color = ""
+				return in
+			}(),
+			wantErr: true,
+		},
+		{
+			name: "rating below min",
+			input: func() banana.UpdateInput {
+				in := validUpdateInput()
+				in.Rating = domain.DefaultMinInt - 1
+				return in
+			}(),
+			wantErr: true,
+		},
+		{
+			name: "rating above max",
+			input: func() banana.UpdateInput {
+				in := validUpdateInput()
+				in.Rating = domain.DefaultMaxInt + 1
 				return in
 			}(),
 			wantErr: true,

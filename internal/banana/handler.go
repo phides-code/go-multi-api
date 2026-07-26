@@ -65,13 +65,14 @@ func (h *Handler) getByID(ctx context.Context, id string) (events.APIGatewayProx
 
 func (h *Handler) create(ctx context.Context, body string) (events.APIGatewayProxyResponse, error) {
 	var payload struct {
-		Color string `json:"color"`
+		Color  string `json:"color"`
+		Rating int    `json:"rating"`
 	}
 	if err := json.Unmarshal([]byte(body), &payload); err != nil {
 		return h.errorResponse(ctx, domain.ErrInvalidJSON, "create banana")
 	}
 
-	input := CreateInput{Color: payload.Color}
+	input := CreateInput{Color: payload.Color, Rating: payload.Rating}
 	if err := ValidateCreateInput(input); err != nil {
 		return h.errorResponse(ctx, err, "create banana")
 	}
@@ -79,6 +80,7 @@ func (h *Handler) create(ctx context.Context, body string) (events.APIGatewayPro
 	banana := Banana{
 		ID:        domain.NewID(),
 		Color:     payload.Color,
+		Rating:    payload.Rating,
 		CreatedOn: uint64(time.Now().UnixMilli()),
 	}
 
@@ -96,20 +98,22 @@ func (h *Handler) update(ctx context.Context, id, body string) (events.APIGatewa
 	}
 
 	var payload struct {
-		Color string `json:"color"`
+		Color  string `json:"color"`
+		Rating int    `json:"rating"`
 	}
 	if err := json.Unmarshal([]byte(body), &payload); err != nil {
 		return h.errorResponse(ctx, domain.ErrInvalidJSON, "update banana")
 	}
 
-	input := UpdateInput{ID: id, Color: payload.Color}
+	input := UpdateInput{ID: id, Color: payload.Color, Rating: payload.Rating}
 	if err := ValidateUpdateInput(input); err != nil {
 		return h.errorResponse(ctx, err, "update banana")
 	}
 
 	updated, err := h.repo.Update(ctx, Banana{
-		ID:    id,
-		Color: payload.Color,
+		ID:     id,
+		Color:  payload.Color,
+		Rating: payload.Rating,
 	})
 	if err != nil {
 		return h.errorResponse(ctx, err, "update banana")

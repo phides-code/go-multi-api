@@ -179,7 +179,7 @@ func TestBananaRepositoryDelete(t *testing.T) {
 func TestBananaRepositoryUpdate(t *testing.T) {
 	t.Parallel()
 
-	updatedBanana := banana.Banana{ID: uuid.NewString(), Color: "updated", CreatedOn: 12345}
+	updatedBanana := banana.Banana{ID: uuid.NewString(), Color: "updated", Rating: 75, CreatedOn: 12345}
 	errSDK := errors.New("dynamo unavailable")
 
 	item, err := attributevalue.MarshalMap(updatedBanana)
@@ -198,8 +198,9 @@ func TestBananaRepositoryUpdate(t *testing.T) {
 			setupMock: func(t *testing.T) *mockDynamoClient {
 				return &mockDynamoClient{
 					updateItemFn: func(_ context.Context, params *awsdynamodb.UpdateItemInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.UpdateItemOutput, error) {
-						testutil.AssertUpdateSets(t, params, map[string]string{
-							"color": updatedBanana.Color,
+						testutil.AssertUpdateSets(t, params, map[string]any{
+							"color":  updatedBanana.Color,
+							"rating": updatedBanana.Rating,
 						})
 						return &awsdynamodb.UpdateItemOutput{Attributes: item}, nil
 					},
@@ -248,7 +249,7 @@ func TestBananaRepositoryUpdate(t *testing.T) {
 func TestBananaRepositoryCreate(t *testing.T) {
 	t.Parallel()
 
-	want := banana.Banana{ID: uuid.NewString(), Color: "new", CreatedOn: 12345}
+	want := banana.Banana{ID: uuid.NewString(), Color: "new", Rating: testutil.TestBananaRating, CreatedOn: 12345}
 	errSDK := errors.New("dynamo unavailable")
 
 	tests := []struct {

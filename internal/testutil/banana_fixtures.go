@@ -12,6 +12,9 @@ import (
 // TestBananaColor is the canonical valid color in handler and DynamoDB tests.
 const TestBananaColor = "yellow"
 
+// TestBananaRating is the canonical valid rating in handler and DynamoDB tests.
+const TestBananaRating = 50
+
 // TestStoredBananaCreatedOn is a fixed timestamp for persisted-banana repository tests.
 const TestStoredBananaCreatedOn uint64 = 12345
 
@@ -21,15 +24,22 @@ const (
 	ListBananaColorThird  = "brown"
 )
 
+const (
+	ListBananaRatingFirst  = 10
+	ListBananaRatingSecond = 20
+	ListBananaRatingThird  = 30
+)
+
 // BananaBody is the create/update request payload for banana HTTP tests.
 // Declared independently of banana.Banana so tag regressions surface as test failures.
 type BananaBody struct {
-	Color string `json:"color"`
+	Color  string `json:"color"`
+	Rating int    `json:"rating"`
 }
 
 // ValidBananaBody returns a BananaBody with canonical valid field values.
 func ValidBananaBody() BananaBody {
-	return BananaBody{Color: TestBananaColor}
+	return BananaBody{Color: TestBananaColor, Rating: TestBananaRating}
 }
 
 // JSON marshals the body to a request payload string.
@@ -49,6 +59,7 @@ func BananaWithID(body BananaBody, createdOn uint64) (id string, b banana.Banana
 	b = banana.Banana{
 		ID:        id,
 		Color:     body.Color,
+		Rating:    body.Rating,
 		CreatedOn: createdOn,
 	}
 	return
@@ -58,16 +69,19 @@ func BananaWithID(body BananaBody, createdOn uint64) (id string, b banana.Banana
 // When withTimestamps is true, CreatedOn is set to 1, 2, and 3 respectively.
 func ListBananas(withTimestamps bool) (first, second, third banana.Banana) {
 	first = banana.Banana{
-		ID:    uuid.NewString(),
-		Color: ListBananaColorFirst,
+		ID:     uuid.NewString(),
+		Color:  ListBananaColorFirst,
+		Rating: ListBananaRatingFirst,
 	}
 	second = banana.Banana{
-		ID:    uuid.NewString(),
-		Color: ListBananaColorSecond,
+		ID:     uuid.NewString(),
+		Color:  ListBananaColorSecond,
+		Rating: ListBananaRatingSecond,
 	}
 	third = banana.Banana{
-		ID:    uuid.NewString(),
-		Color: ListBananaColorThird,
+		ID:     uuid.NewString(),
+		Color:  ListBananaColorThird,
+		Rating: ListBananaRatingThird,
 	}
 	if withTimestamps {
 		first.CreatedOn = 1

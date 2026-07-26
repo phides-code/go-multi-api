@@ -6,6 +6,7 @@ import (
 
 	"github.com/phides-code/go-multi-api/internal/banana"
 	"github.com/phides-code/go-multi-api/internal/domain"
+	"github.com/phides-code/go-multi-api/internal/testutil"
 )
 
 type mockBananaRepository struct {
@@ -60,7 +61,7 @@ func emptyBananaRepo() *mockBananaRepository {
 func dispatchBananaRepo() *mockBananaRepository {
 	return &mockBananaRepository{
 		getFn: func(_ context.Context, gotID string) (banana.Banana, error) {
-			return banana.Banana{ID: gotID, Color: "found"}, nil
+			return banana.Banana{ID: gotID, Color: "found", Rating: testutil.TestBananaRating}, nil
 		},
 		listFn: func(_ context.Context) ([]banana.Banana, error) {
 			return nil, nil

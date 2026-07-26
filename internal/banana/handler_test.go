@@ -27,6 +27,7 @@ func TestBananaHandlerCreate(t *testing.T) {
 		wantStatus   int
 		wantErrorMsg string
 		wantColor    string
+		wantRating   int
 	}{
 		{
 			name: "success",
@@ -40,6 +41,7 @@ func TestBananaHandlerCreate(t *testing.T) {
 			},
 			wantStatus: http.StatusCreated,
 			wantColor:  testutil.TestBananaColor,
+			wantRating: testutil.TestBananaRating,
 		},
 		{
 			name: "repo failure",
@@ -95,6 +97,9 @@ func TestBananaHandlerCreate(t *testing.T) {
 
 			if banana.Color != tt.wantColor {
 				t.Fatalf("color = %q, want %q", banana.Color, tt.wantColor)
+			}
+			if banana.Rating != tt.wantRating {
+				t.Fatalf("rating = %d, want %d", banana.Rating, tt.wantRating)
 			}
 
 			if err := domain.ValidateID(banana.ID); err != nil {
@@ -373,6 +378,22 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 			wantErrorMsg: "validation failed",
 			setupRepo:    panicBananaRepo,
 		},
+		{
+			name:         "POST rating below min",
+			method:       "POST",
+			body:         validationBodies.bananaWithRatingBelowMin,
+			wantStatus:   http.StatusBadRequest,
+			wantErrorMsg: "validation failed",
+			setupRepo:    panicBananaRepo,
+		},
+		{
+			name:         "POST rating above max",
+			method:       "POST",
+			body:         validationBodies.bananaWithRatingAboveMax,
+			wantStatus:   http.StatusBadRequest,
+			wantErrorMsg: "validation failed",
+			setupRepo:    panicBananaRepo,
+		},
 	}
 
 	for _, tt := range tests {
@@ -578,6 +599,24 @@ func TestBananaHandlerUpdate(t *testing.T) {
 			name:         "PUT color too long",
 			pathID:       validUuid,
 			body:         validationBodies.bananaWithValueTooLong,
+			wantStatus:   http.StatusBadRequest,
+			wantBanana:   nil,
+			wantErrorMsg: "validation failed",
+			setupRepo:    func(pathID string) *mockBananaRepository { return emptyBananaRepo() },
+		},
+		{
+			name:         "PUT rating below min",
+			pathID:       validUuid,
+			body:         validationBodies.bananaWithRatingBelowMin,
+			wantStatus:   http.StatusBadRequest,
+			wantBanana:   nil,
+			wantErrorMsg: "validation failed",
+			setupRepo:    func(pathID string) *mockBananaRepository { return emptyBananaRepo() },
+		},
+		{
+			name:         "PUT rating above max",
+			pathID:       validUuid,
+			body:         validationBodies.bananaWithRatingAboveMax,
 			wantStatus:   http.StatusBadRequest,
 			wantBanana:   nil,
 			wantErrorMsg: "validation failed",

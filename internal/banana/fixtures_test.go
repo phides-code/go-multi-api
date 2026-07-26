@@ -11,9 +11,11 @@ import (
 )
 
 type bananaValidationBodies struct {
-	bananaWithEmptyValue   string
-	bananaWithWhitespace   string
-	bananaWithValueTooLong string
+	bananaWithEmptyValue      string
+	bananaWithWhitespace      string
+	bananaWithValueTooLong    string
+	bananaWithRatingBelowMin  string
+	bananaWithRatingAboveMax  string
 }
 
 func newBananaValidationBodies(t *testing.T) bananaValidationBodies {
@@ -28,10 +30,18 @@ func newBananaValidationBodies(t *testing.T) bananaValidationBodies {
 	bananaWithValueTooLong := testutil.ValidBananaBody()
 	bananaWithValueTooLong.Color = strings.Repeat("a", domain.DefaultMaxStringLength+1)
 
+	bananaWithRatingBelowMin := testutil.ValidBananaBody()
+	bananaWithRatingBelowMin.Rating = domain.DefaultMinInt - 1
+
+	bananaWithRatingAboveMax := testutil.ValidBananaBody()
+	bananaWithRatingAboveMax.Rating = domain.DefaultMaxInt + 1
+
 	return bananaValidationBodies{
-		bananaWithEmptyValue:   bananaWithEmptyValue.JSON(t),
-		bananaWithWhitespace:   bananaWithWhitespace.JSON(t),
-		bananaWithValueTooLong: bananaWithValueTooLong.JSON(t),
+		bananaWithEmptyValue:     bananaWithEmptyValue.JSON(t),
+		bananaWithWhitespace:     bananaWithWhitespace.JSON(t),
+		bananaWithValueTooLong:   bananaWithValueTooLong.JSON(t),
+		bananaWithRatingBelowMin: bananaWithRatingBelowMin.JSON(t),
+		bananaWithRatingAboveMax: bananaWithRatingAboveMax.JSON(t),
 	}
 }
 

@@ -11,9 +11,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
-// AssertUpdateSets checks that UpdateItem SETs exactly the given string attributes.
+// AssertUpdateSets checks that UpdateItem SETs exactly the given attributes.
 // Attribute names are sorted when building the expected UpdateExpression.
-func AssertUpdateSets(t *testing.T, params *awsdynamodb.UpdateItemInput, want map[string]string) {
+// Values may be string (AttributeValueMemberS) or int (AttributeValueMemberN).
+func AssertUpdateSets(t *testing.T, params *awsdynamodb.UpdateItemInput, want map[string]any) {
 	t.Helper()
 
 	if params.UpdateExpression == nil {
@@ -49,12 +50,26 @@ func AssertUpdateSets(t *testing.T, params *awsdynamodb.UpdateItemInput, want ma
 		}
 
 		valKey := ":" + attr
-		gotAV, ok := params.ExpressionAttributeValues[valKey].(*types.AttributeValueMemberS)
-		if !ok {
-			t.Fatalf("ExpressionAttributeValues[%q] is not AttributeValueMemberS", valKey)
-		}
-		if gotAV.Value != wantVal {
-			t.Fatalf("ExpressionAttributeValues[%q] = %q, want %q", valKey, gotAV.Value, wantVal)
+		switch v := wantVal.(type) {
+		case string:
+			gotAV, ok := params.ExpressionAttributeValues[valKey].(*types.AttributeValueMemberS)
+			if !ok {
+				t.Fatalf("ExpressionAttributeValues[%q] is not AttributeValueMemberS", valKey)
+			}
+			if gotAV.Value != v {
+				t.Fatalf("ExpressionAttributeValues[%q] = %q, want %q", valKey, gotAV.Value, v)
+			}
+		case int:
+			gotAV, ok := params.ExpressionAttributeValues[valKey].(*types.AttributeValueMemberN)
+			if !ok {
+				t.Fatalf("ExpressionAttributeValues[%q] is not AttributeValueMemberN", valKey)
+			}
+			wantN := fmt.Sprintf("%d", v)
+			if gotAV.Value != wantN {
+				t.Fatalf("ExpressionAttributeValues[%q] = %q, want %q", valKey, gotAV.Value, wantN)
+			}
+		default:
+			t.Fatalf("unsupported want type for %q: %T", attr, wantVal)
 		}
 	}
 }

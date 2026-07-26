@@ -116,11 +116,12 @@ func (r *dynamoRepository) Update(ctx context.Context, banana Banana) (Banana, e
 		Key: map[string]types.AttributeValue{
 			"id": &types.AttributeValueMemberS{Value: banana.ID},
 		},
-		UpdateExpression:         aws.String("SET #color = :color"),
+		UpdateExpression:         aws.String("SET #color = :color, #rating = :rating"),
 		ConditionExpression:      aws.String("attribute_exists(id)"),
-		ExpressionAttributeNames: map[string]string{"#color": "color"},
+		ExpressionAttributeNames: map[string]string{"#color": "color", "#rating": "rating"},
 		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":color": &types.AttributeValueMemberS{Value: banana.Color},
+			":color":  &types.AttributeValueMemberS{Value: banana.Color},
+			":rating": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", banana.Rating)},
 		},
 		ReturnValues: types.ReturnValueAllNew,
 	})
