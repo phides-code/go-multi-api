@@ -60,7 +60,7 @@ func emptyBananaRepo() *mockBananaRepository {
 func dispatchBananaRepo() *mockBananaRepository {
 	return &mockBananaRepository{
 		getFn: func(_ context.Context, gotID string) (banana.Banana, error) {
-			return banana.Banana{ID: gotID, Content: "found"}, nil
+			return banana.Banana{ID: gotID, Color: "found"}, nil
 		},
 		listFn: func(_ context.Context) ([]banana.Banana, error) {
 			return nil, nil

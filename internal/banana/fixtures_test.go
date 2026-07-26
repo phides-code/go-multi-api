@@ -20,13 +20,13 @@ func newBananaValidationBodies(t *testing.T) bananaValidationBodies {
 	t.Helper()
 
 	bananaWithEmptyValue := testutil.ValidBananaBody()
-	bananaWithEmptyValue.Content = ""
+	bananaWithEmptyValue.Color = ""
 
 	bananaWithWhitespace := testutil.ValidBananaBody()
-	bananaWithWhitespace.Content = "   "
+	bananaWithWhitespace.Color = "   "
 
 	bananaWithValueTooLong := testutil.ValidBananaBody()
-	bananaWithValueTooLong.Content = strings.Repeat("a", domain.DefaultMaxStringLength+1)
+	bananaWithValueTooLong.Color = strings.Repeat("a", domain.DefaultMaxStringLength+1)
 
 	return bananaValidationBodies{
 		bananaWithEmptyValue:   bananaWithEmptyValue.JSON(t),

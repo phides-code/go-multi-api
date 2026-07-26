@@ -14,7 +14,7 @@ func TestValidateCreateInput(t *testing.T) {
 
 	validCreateInput := func() banana.CreateInput {
 		return banana.CreateInput{
-			Content: testutil.TestBananaContent,
+			Color: testutil.TestBananaColor,
 		}
 	}
 
@@ -25,10 +25,10 @@ func TestValidateCreateInput(t *testing.T) {
 	}{
 		{name: "valid", input: validCreateInput(), wantErr: false},
 		{
-			name: "empty content",
+			name: "empty color",
 			input: func() banana.CreateInput {
 				in := validCreateInput()
-				in.Content = ""
+				in.Color = ""
 				return in
 			}(),
 			wantErr: true,
@@ -58,8 +58,8 @@ func TestValidateUpdateInput(t *testing.T) {
 
 	validUpdateInput := func() banana.UpdateInput {
 		return banana.UpdateInput{
-			ID:      validID,
-			Content: testutil.TestBananaContent,
+			ID:    validID,
+			Color: testutil.TestBananaColor,
 		}
 	}
 
@@ -79,10 +79,10 @@ func TestValidateUpdateInput(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "empty content",
+			name: "empty color",
 			input: func() banana.UpdateInput {
 				in := validUpdateInput()
-				in.Content = ""
+				in.Color = ""
 				return in
 			}(),
 			wantErr: true,

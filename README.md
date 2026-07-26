@@ -43,46 +43,46 @@ Success: `data` set, `error` null. Failure: opposite.
 
 **Standard client errors** (`internal/platform/errors.go`):
 
-| HTTP | `error` | Domain sentinel | Cause |
-| ---- | ------- | --------------- | ----- |
-| 400 | `invalid json` | `ErrInvalidJSON` | Bad body |
-| 400 | `invalid id` | `ErrInvalidID` | Path `{id}` not UUID |
-| 400 | `validation failed` | `ErrValidationFailed` | Domain rule failed |
-| 404 | `not found` | `ErrNotFound` | Missing item |
-| 409 | `already exists` | `ErrAlreadyExists` | Duplicate create |
-| 405 | `method not allowed` | `ErrMethodNotAllowed` | Unsupported method |
-| 401 | `unauthorized` | — | Bad/missing token |
-| 500 | `internal server error` | — | Unexpected failure |
+| HTTP | `error`                 | Domain sentinel       | Cause                |
+| ---- | ----------------------- | --------------------- | -------------------- |
+| 400  | `invalid json`          | `ErrInvalidJSON`      | Bad body             |
+| 400  | `invalid id`            | `ErrInvalidID`        | Path `{id}` not UUID |
+| 400  | `validation failed`     | `ErrValidationFailed` | Domain rule failed   |
+| 404  | `not found`             | `ErrNotFound`         | Missing item         |
+| 409  | `already exists`        | `ErrAlreadyExists`    | Duplicate create     |
+| 405  | `method not allowed`    | `ErrMethodNotAllowed` | Unsupported method   |
+| 401  | `unauthorized`          | —                     | Bad/missing token    |
+| 500  | `internal server error` | —                     | Unexpected failure   |
 
 Return `ErrValidationFailed` from validation; no per-field error strings unless you extend platform mapping and this table. Client-facing text comes from each sentinel's `Error()` in `domain/errors.go` via `platform.ClientErrorMessage`. New cross-cutting errors: add sentinel in `domain/errors.go`, add a row to `clientErrorMappings` in `platform/errors.go`, document here.
 
 ### Bananas (`/bananas`)
 
-| Method | Path | Behavior |
-| ------ | ---- | -------- |
-| `GET` | `/bananas` | List all |
-| `GET` | `/bananas/{id}` | Get by UUID |
-| `POST` | `/bananas` | Create; server sets `id`, `createdOn` |
-| `PUT` | `/bananas/{id}` | Update `content`; 404 if missing |
-| `DELETE` | `/bananas/{id}` | Hard delete; returns deleted item |
+| Method   | Path            | Behavior                              |
+| -------- | --------------- | ------------------------------------- |
+| `GET`    | `/bananas`      | List all                              |
+| `GET`    | `/bananas/{id}` | Get by UUID                           |
+| `POST`   | `/bananas`      | Create; server sets `id`, `createdOn` |
+| `PUT`    | `/bananas/{id}` | Update `color`; 404 if missing        |
+| `DELETE` | `/bananas/{id}` | Hard delete; returns deleted item     |
 
 **Item shape** (single banana in create/get/update/delete responses; list returns an array of the same shape):
 
 ```json
 {
-  "id": "uuid",
-  "content": "string",
-  "createdOn": 1717516800000
+    "id": "uuid",
+    "color": "string",
+    "createdOn": 1717516800000
 }
 ```
 
-**Create body** (POST): `{ "content": "string" }`
+**Create body** (POST): `{ "color": "string" }`
 
-**Update body** (PUT): `{ "content": "string" }`
+**Update body** (PUT): `{ "color": "string" }`
 
 **List** (`GET /bananas`): `data` is an array of item shape. The repository scans the full table (DynamoDB pagination is handled internally, not exposed over HTTP).
 
-**Validation:** `content` required on create/update, 1–100 Unicode characters (default string bounds: `domain.DefaultMinStringLength`–`DefaultMaxStringLength`) → 400 `validation failed`. Path `{id}` must be UUID → 400 `invalid id`.
+**Validation:** `color` required on create/update, 1–100 Unicode characters (default string bounds: `domain.DefaultMinStringLength`–`DefaultMaxStringLength`) → 400 `validation failed`. Path `{id}` must be UUID → 400 `invalid id`.
 
 ## Development
 
@@ -104,15 +104,15 @@ curl http://localhost:8000/bananas
 
 Extend an existing resource (e.g. add `description` to `Banana`). **TDD:** failing test → minimum code → green. Validation first, HTTP second, persistence last — all within `internal/<resource>/`.
 
-| Step | What | Files |
-| ---- | ---- | ----- |
-| 1 | **Validation tests** — local `validCreateInput` / `validUpdateInput` helpers inside each test; add a wiring row that blanks the new field (or otherwise breaks it). `domain/validation_test.go` already covers generic string rules. | `internal/<resource>/<resource>_test.go` |
-| 2 | **Struct + validation** — field on entity + `json`/`dynamodbav` tags; add to create/update inputs if client-set; wire `domain.ValidateRequiredString` or custom rules. Server-owned fields: set in handler/dynamodb, not inputs. | `internal/<resource>/<resource>.go` |
-| 3 | **Handler tests** — client-error rows (400 `validation failed`; use `panic<Resource>Repo`); success + `assert<Resource>DataKeys` if wire shape changes. Extend `testutil.<Resource>Body` / `Valid<Resource>Body` and package validation-body fixtures when the create/update payload grows. | `internal/<resource>/handler_test.go`, `mocks_test.go`, `assert_test.go`, `internal/testutil/<resource>_fixtures.go` |
-| 4 | **Handler** — parse JSON, validate, call repo. | `internal/<resource>/handler.go` |
-| 5 | **DynamoDB test** (if PUT-updatable) — `setupMock(t)`; `assert<Resource>RepoResult`; create: `assert<Resource>PutItem`; update: `testutil.AssertUpdateSets` (copy from `internal/banana/assert_test.go`). | `internal/<resource>/dynamodb_test.go`, `assert_test.go` |
-| 6 | **DynamoDB impl** — add field to SET expression (alphabetical). Usually no `template.yml` change. | `internal/<resource>/dynamodb.go` |
-| 7 | **Docs** — update item/create/update sections above. | this file |
+| Step | What                                                                                                                                                                                                                                                                                        | Files                                                                                                                |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| 1    | **Validation tests** — local `validCreateInput` / `validUpdateInput` helpers inside each test; add a wiring row that blanks the new field (or otherwise breaks it). `domain/validation_test.go` already covers generic string rules.                                                        | `internal/<resource>/<resource>_test.go`                                                                             |
+| 2    | **Struct + validation** — field on entity + `json`/`dynamodbav` tags; add to create/update inputs if client-set; wire `domain.ValidateRequiredString` or custom rules. Server-owned fields: set in handler/dynamodb, not inputs.                                                            | `internal/<resource>/<resource>.go`                                                                                  |
+| 3    | **Handler tests** — client-error rows (400 `validation failed`; use `panic<Resource>Repo`); success + `assert<Resource>DataKeys` if wire shape changes. Extend `testutil.<Resource>Body` / `Valid<Resource>Body` and package validation-body fixtures when the create/update payload grows. | `internal/<resource>/handler_test.go`, `mocks_test.go`, `assert_test.go`, `internal/testutil/<resource>_fixtures.go` |
+| 4    | **Handler** — parse JSON, validate, call repo.                                                                                                                                                                                                                                              | `internal/<resource>/handler.go`                                                                                     |
+| 5    | **DynamoDB test** (if PUT-updatable) — `setupMock(t)`; `assert<Resource>RepoResult`; create: `assert<Resource>PutItem`; update: `testutil.AssertUpdateSets` (copy from `internal/banana/assert_test.go`).                                                                                   | `internal/<resource>/dynamodb_test.go`, `assert_test.go`                                                             |
+| 6    | **DynamoDB impl** — add field to SET expression (alphabetical). Usually no `template.yml` change.                                                                                                                                                                                           | `internal/<resource>/dynamodb.go`                                                                                    |
+| 7    | **Docs** — update item/create/update sections above.                                                                                                                                                                                                                                        | this file                                                                                                            |
 
 Skip 5–6 for read-only or create-only fields. Optional unvalidated fields: handler round-trip test on create/get.
 
@@ -124,15 +124,15 @@ Each table gets its own package under `internal/<resource>/`. Implement only the
 
 **TDD:** one vertical slice first (e.g. `GET /apples` → empty page), then expand method by method.
 
-| Step | What | Files |
-| ---- | ---- | ----- |
-| 1 | Copy `internal/banana/` → `internal/<resource>/`; failing handler + router integration tests | `internal/<resource>/handler_test.go`, `router_test.go` |
-| 2 | Entity, validation, repository interface | `internal/<resource>/<resource>.go`, `repository.go` |
-| 3 | HTTP handler (+ tests per method, client errors, one 500 per op) | `internal/<resource>/handler.go` |
-| 4 | DynamoDB tests then impl | `internal/<resource>/dynamodb_test.go`, `dynamodb.go` |
-| 5 | Compose: construct repo, `Register("<resources>", …)` on gateway | `internal/app/app.go`, `app_test.go` |
-| 6 | SAM table, `DynamoDBCrudPolicy` per table, API events | `template.yml` |
-| 7 | API docs | this file |
+| Step | What                                                                                         | Files                                                   |
+| ---- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| 1    | Copy `internal/banana/` → `internal/<resource>/`; failing handler + router integration tests | `internal/<resource>/handler_test.go`, `router_test.go` |
+| 2    | Entity, validation, repository interface                                                     | `internal/<resource>/<resource>.go`, `repository.go`    |
+| 3    | HTTP handler (+ tests per method, client errors, one 500 per op)                             | `internal/<resource>/handler.go`                        |
+| 4    | DynamoDB tests then impl                                                                     | `internal/<resource>/dynamodb_test.go`, `dynamodb.go`   |
+| 5    | Compose: construct repo, `Register("<resources>", …)` on gateway                             | `internal/app/app.go`, `app_test.go`                    |
+| 6    | SAM table, `DynamoDBCrudPolicy` per table, API events                                        | `template.yml`                                          |
+| 7    | API docs                                                                                     | this file                                               |
 
 Reference: `internal/banana/`. Errors: use `domain.ErrValidationFailed` unless adding a new cross-cutting sentinel (see standard errors table).
 

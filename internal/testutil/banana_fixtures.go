@@ -9,27 +9,27 @@ import (
 	"github.com/phides-code/go-multi-api/internal/banana"
 )
 
-// TestBananaContent is the canonical valid content in handler and DynamoDB tests.
-const TestBananaContent = "ripe"
+// TestBananaColor is the canonical valid color in handler and DynamoDB tests.
+const TestBananaColor = "yellow"
 
 // TestStoredBananaCreatedOn is a fixed timestamp for persisted-banana repository tests.
 const TestStoredBananaCreatedOn uint64 = 12345
 
 const (
-	ListBananaContentFirst  = "first"
-	ListBananaContentSecond = "second"
-	ListBananaContentThird  = "third"
+	ListBananaColorFirst  = "yellow"
+	ListBananaColorSecond = "green"
+	ListBananaColorThird  = "brown"
 )
 
 // BananaBody is the create/update request payload for banana HTTP tests.
 // Declared independently of banana.Banana so tag regressions surface as test failures.
 type BananaBody struct {
-	Content string `json:"content"`
+	Color string `json:"color"`
 }
 
 // ValidBananaBody returns a BananaBody with canonical valid field values.
 func ValidBananaBody() BananaBody {
-	return BananaBody{Content: TestBananaContent}
+	return BananaBody{Color: TestBananaColor}
 }
 
 // JSON marshals the body to a request payload string.
@@ -48,7 +48,7 @@ func BananaWithID(body BananaBody, createdOn uint64) (id string, b banana.Banana
 	id = uuid.NewString()
 	b = banana.Banana{
 		ID:        id,
-		Content:   body.Content,
+		Color:     body.Color,
 		CreatedOn: createdOn,
 	}
 	return
@@ -58,16 +58,16 @@ func BananaWithID(body BananaBody, createdOn uint64) (id string, b banana.Banana
 // When withTimestamps is true, CreatedOn is set to 1, 2, and 3 respectively.
 func ListBananas(withTimestamps bool) (first, second, third banana.Banana) {
 	first = banana.Banana{
-		ID:      uuid.NewString(),
-		Content: ListBananaContentFirst,
+		ID:    uuid.NewString(),
+		Color: ListBananaColorFirst,
 	}
 	second = banana.Banana{
-		ID:      uuid.NewString(),
-		Content: ListBananaContentSecond,
+		ID:    uuid.NewString(),
+		Color: ListBananaColorSecond,
 	}
 	third = banana.Banana{
-		ID:      uuid.NewString(),
-		Content: ListBananaContentThird,
+		ID:    uuid.NewString(),
+		Color: ListBananaColorThird,
 	}
 	if withTimestamps {
 		first.CreatedOn = 1
