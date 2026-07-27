@@ -4,7 +4,6 @@ package gateway
 import (
 	"context"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -22,7 +21,7 @@ type Gateway struct {
 }
 
 func NewGateway(logger *platform.Logger) *Gateway {
-	return NewGatewayWithCFTToken(logger, os.Getenv("AWS_CF_TOKEN"))
+	return NewGatewayWithCFTToken(logger, platform.ExpectedCFTToken())
 }
 
 func NewGatewayWithCFTToken(logger *platform.Logger, cfToken string) *Gateway {

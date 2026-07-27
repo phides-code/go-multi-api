@@ -18,20 +18,22 @@ internal/
   domain/                   cross-cutting: errors, id, validation
   gateway/                  auth gate + path routing; Register(prefix, ResourceHandler)
   banana/                   vertical slice: entity, repository, handler, dynamodb
-  platform/                 response envelope, errors, logging, auth
-  app/app.go                composition root: construct repos, register handlers
+  platform/                 response envelope, errors, logging, auth (CFTTokenHeader, CFTTokenEnvVar)
+  app/app.go                composition root: shared DynamoDB client, repos, Register
+  app/banana_stub_test.go   no-op banana.Repository for composition smoke tests
+  app/app_test.go           testGateway + assertWiringSmokeGET
   testutil/                 shared test helpers (TestCFTToken, envelope/dynamodb asserts, fixtures)
 template.yml                SAM: API Gateway, Lambda, tables
 Makefile                    build, test, local, deploy
 ```
 
-Copy `internal/banana/` for new resources. Reuse `domain.ValidateRequiredString` and `domain.ValidateID`; wire resource-specific validation in `<resource>.go`.
+Copy `internal/banana/` for new resources. Reuse `domain.ValidateRequiredString` / `ValidateRequiredInt` and `domain.ValidateID`; wire resource-specific validation in `<resource>.go`. Composition stubs live under `internal/app/` (`*_stub_test.go`), not in the resource package — Go test packages are not importable by `app` tests.
 
 ## API contract
 
 ### Authentication
 
-Every request except `OPTIONS` requires `X-CF-Token: <token>` (deploy param `AwsCfToken` → env `AWS_CF_TOKEN`). `make local` sets `AWS_SAM_LOCAL=true` and skips the check.
+Every request except `OPTIONS` requires `X-CF-Token: <token>` (header `platform.CFTTokenHeader`). Deploy param `AwsCfToken` maps to env `AWS_CF_TOKEN` (`platform.CFTTokenEnvVar`). `make local` sets `AWS_SAM_LOCAL=true` and skips the check.
 
 ### Response envelope
 
@@ -123,20 +125,20 @@ Skip 5–6 for read-only or create-only fields. Optional unvalidated fields: han
 
 Each table gets its own package under `internal/<resource>/`. Implement only the HTTP methods you need (handler **and** `template.yml`). Checklist: **[docs/new-resource.md](docs/new-resource.md)**.
 
-**TDD:** one vertical slice first (e.g. `GET /apples` → empty page), then expand method by method.
+**TDD:** one vertical slice first (e.g. `GET /apples` → empty list), then expand method by method.
 
-| Step | What                                                                                         | Files                                                   |
-| ---- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| 1    | Copy `internal/banana/` → `internal/<resource>/`; failing handler + router integration tests | `internal/<resource>/handler_test.go`, `router_test.go` |
-| 2    | Entity, validation, repository interface                                                     | `internal/<resource>/<resource>.go`, `repository.go`    |
-| 3    | HTTP handler (+ tests per method, client errors, one 500 per op)                             | `internal/<resource>/handler.go`                        |
-| 4    | DynamoDB tests then impl                                                                     | `internal/<resource>/dynamodb_test.go`, `dynamodb.go`   |
-| 5    | Compose: construct repo, `Register("<resources>", …)` on gateway                             | `internal/app/app.go`, `app_test.go`                    |
-| 6    | SAM table, `DynamoDBCrudPolicy` per table, API events                                        | `template.yml`                                          |
-| 7    | API docs                                                                                     | this file                                               |
+| Step | What                                                                                         | Files                                                                          |
+| ---- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| 1    | Copy `internal/banana/` → `internal/<resource>/`; failing handler + router integration tests | `internal/<resource>/handler_test.go`, `router_test.go`                        |
+| 2    | Entity, validation, repository interface                                                     | `internal/<resource>/<resource>.go`, `repository.go`                           |
+| 3    | HTTP handler (+ tests per method, client errors, one 500 per op)                             | `internal/<resource>/handler.go`                                               |
+| 4    | DynamoDB tests then impl                                                                     | `internal/<resource>/dynamodb_test.go`, `dynamodb.go`                          |
+| 5    | Compose: shared client, `NewRepository(client)`, `Register`; stub + smoke test               | `internal/app/app.go`, `<resource>_stub_test.go`, `app_test.go`                |
+| 6    | SAM table, `DynamoDBCrudPolicy` per table, API events                                        | `template.yml`                                                                 |
+| 7    | API docs                                                                                     | this file                                                                      |
 
 Reference: `internal/banana/`. Errors: use `domain.ErrValidationFailed` unless adding a new cross-cutting sentinel (see standard errors table).
 
-**Second table:** copy the banana package, register in `app/app.go`, extend `template.yml`. Details: [docs/new-resource.md](docs/new-resource.md#second-table-in-the-same-project).
+**Second table:** copy the banana package, register in `app/app.go` (reuse the shared DynamoDB client), add `*_stub_test.go`, extend `testGateway` / smoke path, extend `template.yml`. Details: [docs/new-resource.md](docs/new-resource.md#second-table-in-the-same-project).
 
 `make test` before PR.

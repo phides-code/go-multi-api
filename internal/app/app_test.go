@@ -1,4 +1,4 @@
-// Composition smoke tests: verify the built gateway handles banana routes without panicking.
+// Composition smoke tests: verify the built gateway handles resource routes without panicking.
 package app
 
 import (
@@ -7,37 +7,27 @@ import (
 	"testing"
 
 	"github.com/aws/aws-lambda-go/events"
-	"github.com/phides-code/go-multi-api/internal/banana"
+	"github.com/phides-code/go-multi-api/internal/gateway"
 	"github.com/phides-code/go-multi-api/internal/platform"
 	"github.com/phides-code/go-multi-api/internal/testutil"
 )
 
-type stubBananaRepo struct{}
-
-func (stubBananaRepo) Create(_ context.Context, _ banana.Banana) (banana.Banana, error) {
-	return banana.Banana{}, nil
-}
-func (stubBananaRepo) GetByID(_ context.Context, _ string) (banana.Banana, error) {
-	return banana.Banana{}, nil
-}
-func (stubBananaRepo) List(_ context.Context) ([]banana.Banana, error) {
-	return nil, nil
-}
-func (stubBananaRepo) Update(_ context.Context, _ banana.Banana) (banana.Banana, error) {
-	return banana.Banana{}, nil
-}
-func (stubBananaRepo) Delete(_ context.Context, _ string) (banana.Banana, error) {
-	return banana.Banana{}, nil
-}
-
 func TestWiringSmokeGETBananas(t *testing.T) {
-	t.Setenv("AWS_CF_TOKEN", testutil.TestCFTToken)
+	assertWiringSmokeGET(t, testGateway(t), "/bananas")
+}
 
-	g := buildGateway(platform.NewLogger(), stubBananaRepo{})
+func testGateway(t *testing.T) *gateway.Gateway {
+	t.Helper()
+	t.Setenv(platform.CFTTokenEnvVar, testutil.TestCFTToken)
+	return buildGateway(platform.NewLogger(), stubBananaRepo{})
+}
+
+func assertWiringSmokeGET(t *testing.T, g *gateway.Gateway, path string) {
+	t.Helper()
 
 	resp, err := g.Handle(context.Background(), events.APIGatewayProxyRequest{
 		HTTPMethod: http.MethodGet,
-		Path:       "/bananas",
+		Path:       path,
 		Headers:    map[string]string{platform.CFTTokenHeader: testutil.TestCFTToken},
 	})
 	if err != nil {

@@ -9,10 +9,11 @@ import (
 
 const CFTTokenHeader = "X-CF-Token"
 
-const cfTokenEnvVar = "AWS_CF_TOKEN"
+// CFTTokenEnvVar is the process env key for the expected API token (SAM maps AwsCfToken here).
+const CFTTokenEnvVar = "AWS_CF_TOKEN"
 
 func ExpectedCFTToken() string {
-	return os.Getenv(cfTokenEnvVar)
+	return os.Getenv(CFTTokenEnvVar)
 }
 
 func ValidCFTToken(expected string, headers map[string]string) bool {

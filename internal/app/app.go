@@ -18,7 +18,8 @@ func Build(ctx context.Context, logger *platform.Logger) (*gateway.Gateway, erro
 		return nil, fmt.Errorf("load aws config: %w", err)
 	}
 
-	bananaRepo := banana.NewRepository(dynamodb.NewFromConfig(cfg))
+	client := dynamodb.NewFromConfig(cfg)
+	bananaRepo := banana.NewRepository(client)
 	return buildGateway(logger, bananaRepo), nil
 }
 

@@ -11,7 +11,7 @@ Full walkthrough: [Adding a new table](../README.md#adding-a-new-table).
 3. **Entity + validation tests** — `internal/<resource>/<resource>_test.go`.
 4. **Handler** — minimum code to pass step 1; expand tests per method.
 5. **DynamoDB tests** → table-driven repository tests in `internal/<resource>/dynamodb_test.go` → `dynamodb.go` implementation.
-6. **Compose** — `internal/app/app.go` + composition smoke test.
+6. **Compose** — `internal/app/app.go` (shared client + `Register`), `<resource>_stub_test.go`, smoke via `testGateway` / `assertWiringSmokeGET`.
 7. **Infrastructure** — `template.yml`.
 8. **API docs** — `README.md` contract for the new resource.
 9. **`make test`** — must pass before PR.
@@ -42,15 +42,17 @@ Copy `internal/banana/` → `internal/<resource>/` and rename. One package per r
 | ---- | ------- |
 | `internal/domain/` | Cross-cutting only: `errors.go`, `id.go`, `validation.go` |
 | `internal/gateway/gateway.go` | Auth gate + path routing; `Register(prefix, ResourceHandler)` |
-| `internal/platform/` | Response envelope, error mapping, logging, auth header |
-| `internal/testutil/consts.go` | `TestCFTToken` for gateway and composition tests |
+| `internal/platform/` | Response envelope, error mapping, logging, auth (`CFTTokenHeader`, `CFTTokenEnvVar`, `ExpectedCFTToken`) |
+| `internal/testutil/consts.go` | `TestCFTToken` value for gateway and composition tests (pair with `platform.CFTTokenEnvVar` in `t.Setenv`) |
+| `internal/app/banana_stub_test.go` | Pattern for composition no-op repos (stay in `app`, not the resource package — see below) |
 | `internal/testutil/handler_assert.go` | `RequireStatusAndEnvelope`, `AssertAPIError` |
 | `internal/testutil/dynamodb_assert.go` | `AssertUpdateSets` for update success mocks |
 
 ## Files to edit
 
-- [ ] `internal/app/app.go` — `<resource>.NewRepository(...)`, `d.Register("<resources>", <resource>.NewHandler(...))`
-- [ ] `internal/app/app_test.go` — composition smoke test (mirror `TestWiringSmokeGETBananas`)
+- [ ] `internal/app/app.go` — reuse shared `client := dynamodb.NewFromConfig(cfg)`; `<resource>.NewRepository(client)`; `g.Register("<resources>", <resource>.NewHandler(...))`
+- [ ] `internal/app/<resource>_stub_test.go` — no-op `Repository` for composition smoke tests (mirror `banana_stub_test.go`; keep under `app`, not `internal/<resource>/`)
+- [ ] `internal/app/app_test.go` — extend `testGateway` with the new stub; add `assertWiringSmokeGET(t, testGateway(t), "/<resources>")`
 - [ ] `internal/gateway/gateway_test.go` — generic routing/auth only; resource integration lives in `internal/<resource>/router_test.go`
 - [ ] `template.yml` — table, **one `DynamoDBCrudPolicy` per table**, API events
 - [ ] `README.md` — API contract: endpoints, item shape, create/update bodies, validation
@@ -70,10 +72,12 @@ Match the logical ID to the HTTP method (see `template.yml` bananas): `PostBanan
 ## Second table in the same project
 
 1. Copy `internal/banana/` → `internal/<resource>/` and rename symbols.
-2. In `internal/app/app.go` — construct the new repo and `d.Register("<resources>", <resource>.NewHandler(...))`.
+2. In `internal/app/app.go` — `<resource>.NewRepository(client)` on the existing shared client; `g.Register("<resources>", <resource>.NewHandler(...))`.
 3. In `template.yml` — add table, append `DynamoDBCrudPolicy`, add API events.
-4. Add a composition smoke test in `app_test.go`.
+4. Add `internal/app/<resource>_stub_test.go`; extend `testGateway` and add a smoke path in `app_test.go`.
 5. Add `internal/testutil/<resource>_fixtures.go` if handler and DynamoDB tests share fixtures.
+
+Composition stubs stay in `internal/app/` (`*_stub_test.go`). They cannot live in the resource’s `_test.go` files and still be used by `app` tests (Go does not allow importing another package’s tests).
 
 Shared `domain/` and `platform/` stay resource-neutral.
 
@@ -83,6 +87,7 @@ Shared `domain/` and `platform/` stay resource-neutral.
 - Handler tests: `testutil.RequireStatusAndEnvelope`, `testutil.AssertAPIError`; mock repo in `mocks_test.go`. Shared request payloads: `testutil.<Resource>Body` / `Valid<Resource>Body()` / `.JSON(t)` (independent of the entity so tag regressions fail). Reuse package-local `new<Resource>ValidationBodies(t)` for empty/whitespace/too-long samples across POST and PUT.
 - Entity fixtures: `testutil.<Resource>WithID(Valid<Resource>Body(), createdOn)` — client fields via named body struct, not positional args.
 - DynamoDB tests: `setupMock func(t *testing.T) *mockDynamoClient`; `storedBananaFixture(t)` for Get/Delete; `assertBananaRepoResult`, `assertBananaPutItem` in `assert_test.go`; `testutil.AssertUpdateSets` on update success.
+- Composition smoke: `testGateway` + `assertWiringSmokeGET` in `app_test.go`; one `*_stub_test.go` per resource under `internal/app/`.
 - Gateway integration: `router_test.go` in the resource package registers with `gateway.NewGatewayWithCFTToken`.
 - Validation tests: define `validCreateInput` / `validUpdateInput` as local funcs inside each test; clone and tweak one field per case. Prefer `testutil` canonical values over package-local literals.
 - Validation bounds: use `domain.DefaultMinStringLength` / `DefaultMaxStringLength` unless the field opts out.
