@@ -16,10 +16,14 @@ func TestWiringSmokeGETBananas(t *testing.T) {
 	assertWiringSmokeGET(t, testGateway(t), "/bananas")
 }
 
+func TestWiringSmokeGETCars(t *testing.T) {
+	assertWiringSmokeGET(t, testGateway(t), "/cars")
+}
+
 func testGateway(t *testing.T) *gateway.Gateway {
 	t.Helper()
 	t.Setenv(platform.CFTTokenEnvVar, testutil.TestCFTToken)
-	return buildGateway(platform.NewLogger(), stubBananaRepo{})
+	return buildGateway(platform.NewLogger(), stubBananaRepo{}, stubCarRepo{})
 }
 
 func assertWiringSmokeGET(t *testing.T, g *gateway.Gateway, path string) {

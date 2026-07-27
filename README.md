@@ -1,6 +1,6 @@
 # go-multi-api
 
-A single AWS Lambda serving a JSON HTTP API backed by DynamoDB. Each URL path maps to one table and one resource type (`/bananas` today). Add resources by registering handlers on the same Lambda.
+A single AWS Lambda serving a JSON HTTP API backed by DynamoDB. Each URL path maps to one table and one resource type (`/bananas`, `/cars`). Add resources by registering handlers on the same Lambda.
 
 ## How it works
 
@@ -18,9 +18,10 @@ internal/
   domain/                   cross-cutting: errors, id, validation
   gateway/                  auth gate + path routing; Register(prefix, ResourceHandler)
   banana/                   vertical slice: entity, repository, handler, dynamodb
+  car/                      vertical slice: entity, repository, handler, dynamodb
   platform/                 response envelope, errors, logging, auth (CFTTokenHeader, CFTTokenEnvVar)
   app/app.go                composition root: shared DynamoDB client, repos, Register
-  app/banana_stub_test.go   no-op banana.Repository for composition smoke tests
+  app/*_stub_test.go        no-op repositories for composition smoke tests
   app/app_test.go           testGateway + assertWiringSmokeGET
   testutil/                 shared test helpers (TestCFTToken, envelope/dynamodb asserts, fixtures)
 template.yml                SAM: API Gateway, Lambda, tables
@@ -87,12 +88,38 @@ Return `ErrValidationFailed` from validation; no per-field error strings unless 
 
 **Validation:** `color` required on create/update, 1–100 Unicode characters (`domain.DefaultMinStringLength`–`DefaultMaxStringLength`). `rating` required on create/update, integer 0–100 (`domain.DefaultMinInt`–`DefaultMaxInt`). Failures → 400 `validation failed`. Path `{id}` must be UUID → 400 `invalid id`.
 
+### Cars (`/cars`)
+
+| Method   | Path         | Behavior                              |
+| -------- | ------------ | ------------------------------------- |
+| `GET`    | `/cars`      | List all                              |
+| `GET`    | `/cars/{id}` | Get by UUID                           |
+| `POST`   | `/cars`      | Create; server sets `id`, `createdOn` |
+| `PUT`    | `/cars/{id}` | Update `model`; 404 if missing        |
+| `DELETE` | `/cars/{id}` | Hard delete; returns deleted item     |
+
+**Item shape:**
+
+```json
+{
+  "id": "uuid",
+  "model": "string",
+  "createdOn": 1717516800000
+}
+```
+
+**Create / update body:** `{ "model": "string" }`
+
+**List** (`GET /cars`): `data` is an array of item shape. The repository scans the full table (DynamoDB pagination is handled internally, not exposed over HTTP).
+
+**Validation:** `model` required on create/update, 1–100 Unicode characters (`domain.DefaultMinStringLength`–`DefaultMaxStringLength`). Failures → 400 `validation failed`. Path `{id}` must be UUID → 400 `invalid id`.
+
 ## Development
 
 Go 1.23+, [AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html).
 
 ```bash
-make test      # unit tests + coverage gate (69% total, 85% gateway, 85% banana)
+make test      # unit tests + coverage gate (69% total, 85% gateway/banana/car)
 make build
 make local     # API on :8000 (Docker); no auth header needed
 ```

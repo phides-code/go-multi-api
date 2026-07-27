@@ -1,4 +1,4 @@
-# SAM template for API Gateway and the Go Lambda that serves /bananas (and future paths).
+# SAM template for API Gateway and the Go Lambda that serves /bananas, /cars (and future paths).
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 
@@ -43,6 +43,8 @@ Resources:
         - AWSLambdaExecute
         - DynamoDBCrudPolicy:
             TableName: !Ref AppnameBananasTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AppnameCarsTable
       Events:
         BananasOptions:
           Type: Api
@@ -90,6 +92,49 @@ Resources:
             Path: /bananas/{id}
             Method: PUT
             RestApiId: !Ref AppnameBackend
+
+        CarsOptions:
+          Type: Api
+          Properties:
+            Path: /cars
+            Method: OPTIONS
+            RestApiId: !Ref AppnameBackend
+        CarsOptionsId:
+          Type: Api
+          Properties:
+            Path: /cars/{id}
+            Method: OPTIONS
+            RestApiId: !Ref AppnameBackend
+        GetCar:
+          Type: Api
+          Properties:
+            Path: /cars/{id}
+            Method: GET
+            RestApiId: !Ref AppnameBackend
+        GetCars:
+          Type: Api
+          Properties:
+            Path: /cars
+            Method: GET
+            RestApiId: !Ref AppnameBackend
+        PostCar:
+          Type: Api
+          Properties:
+            Path: /cars
+            Method: POST
+            RestApiId: !Ref AppnameBackend
+        DeleteCar:
+          Type: Api
+          Properties:
+            Path: /cars/{id}
+            Method: DELETE
+            RestApiId: !Ref AppnameBackend
+        UpdateCar:
+          Type: Api
+          Properties:
+            Path: /cars/{id}
+            Method: PUT
+            RestApiId: !Ref AppnameBackend
             
     Metadata:
       BuildMethod: makefile
@@ -98,6 +143,20 @@ Resources:
     Type: AWS::DynamoDB::Table
     Properties:
       TableName: AppnameBananas
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 2
+        WriteCapacityUnits: 2
+
+  AppnameCarsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: AppnameCars
       AttributeDefinitions:
         - AttributeName: id
           AttributeType: S

@@ -3,6 +3,7 @@
 COVERAGE_MIN_TOTAL ?= 69
 COVERAGE_MIN_GATEWAY ?= 85
 COVERAGE_MIN_BANANA ?= 85
+COVERAGE_MIN_CAR ?= 85
 
 .PHONY: test
 test:
@@ -16,7 +17,10 @@ test:
 	banana=$$(go test ./internal/banana/ -cover 2>&1 | awk '/coverage:/ {gsub(/%/,""); print $$5}'); \
 	awk -v cov="$$banana" -v min=$(COVERAGE_MIN_BANANA) 'BEGIN { if (cov+0 < min+0) exit 1 }' || \
 		(echo "banana coverage $$banana% < $(COVERAGE_MIN_BANANA)%"; exit 1); \
-	echo "coverage OK (total $$total%, gateway $$gateway%, banana $$banana%)"
+	car=$$(go test ./internal/car/ -cover 2>&1 | awk '/coverage:/ {gsub(/%/,""); print $$5}'); \
+	awk -v cov="$$car" -v min=$(COVERAGE_MIN_CAR) 'BEGIN { if (cov+0 < min+0) exit 1 }' || \
+		(echo "car coverage $$car% < $(COVERAGE_MIN_CAR)%"; exit 1); \
+	echo "coverage OK (total $$total%, gateway $$gateway%, banana $$banana%, car $$car%)"
 
 .PHONY: build
 build:

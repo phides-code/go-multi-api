@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/phides-code/go-multi-api/internal/banana"
+	"github.com/phides-code/go-multi-api/internal/car"
 	"github.com/phides-code/go-multi-api/internal/gateway"
 	"github.com/phides-code/go-multi-api/internal/platform"
 )
@@ -20,11 +21,13 @@ func Build(ctx context.Context, logger *platform.Logger) (*gateway.Gateway, erro
 
 	client := dynamodb.NewFromConfig(cfg)
 	bananaRepo := banana.NewRepository(client)
-	return buildGateway(logger, bananaRepo), nil
+	carRepo := car.NewRepository(client)
+	return buildGateway(logger, bananaRepo, carRepo), nil
 }
 
-func buildGateway(logger *platform.Logger, bananaRepo banana.Repository) *gateway.Gateway {
+func buildGateway(logger *platform.Logger, bananaRepo banana.Repository, carRepo car.Repository) *gateway.Gateway {
 	g := gateway.NewGateway(logger)
 	g.Register("bananas", banana.NewHandler(bananaRepo, logger))
+	g.Register("cars", car.NewHandler(carRepo, logger))
 	return g
 }

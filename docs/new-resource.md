@@ -44,7 +44,7 @@ Copy `internal/banana/` → `internal/<resource>/` and rename. One package per r
 | `internal/gateway/gateway.go` | Auth gate + path routing; `Register(prefix, ResourceHandler)` |
 | `internal/platform/` | Response envelope, error mapping, logging, auth (`CFTTokenHeader`, `CFTTokenEnvVar`, `ExpectedCFTToken`) |
 | `internal/testutil/consts.go` | `TestCFTToken` value for gateway and composition tests (pair with `platform.CFTTokenEnvVar` in `t.Setenv`) |
-| `internal/app/banana_stub_test.go` | Pattern for composition no-op repos (stay in `app`, not the resource package — see below) |
+| `internal/app/banana_stub_test.go` | Pattern for composition no-op repos (stay in `app`, not the resource package — see below). See also `car_stub_test.go`. |
 | `internal/testutil/handler_assert.go` | `RequireStatusAndEnvelope`, `AssertAPIError` |
 | `internal/testutil/dynamodb_assert.go` | `AssertUpdateSets` for update success mocks |
 
