@@ -26,7 +26,7 @@ func TestBananaHandlerCreate(t *testing.T) {
 		setupRepo    func() *mockBananaRepository
 		wantStatus   int
 		wantErrorMsg string
-		wantColor    string
+		wantVariety    string
 		wantRating   int
 	}{
 		{
@@ -40,7 +40,7 @@ func TestBananaHandlerCreate(t *testing.T) {
 				}
 			},
 			wantStatus: http.StatusCreated,
-			wantColor:  testutil.TestBananaColor,
+			wantVariety:  testutil.TestBananaVariety,
 			wantRating: testutil.TestBananaRating,
 		},
 		{
@@ -95,8 +95,8 @@ func TestBananaHandlerCreate(t *testing.T) {
 			banana := decodeBananaData(t, envelope)
 			assertBananaDataKeys(t, envelope)
 
-			if banana.Color != tt.wantColor {
-				t.Fatalf("color = %q, want %q", banana.Color, tt.wantColor)
+			if banana.Variety != tt.wantVariety {
+				t.Fatalf("variety = %q, want %q", banana.Variety, tt.wantVariety)
 			}
 			if banana.Rating != tt.wantRating {
 				t.Fatalf("rating = %d, want %d", banana.Rating, tt.wantRating)
@@ -348,7 +348,7 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 			wantErrorMsg: "invalid json",
 		},
 		{
-			name:         "POST empty color",
+			name:         "POST empty variety",
 			method:       "POST",
 			body:         validationBodies.bananaWithEmptyValue,
 			wantStatus:   http.StatusBadRequest,
@@ -363,7 +363,7 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 			wantErrorMsg: "method not allowed",
 		},
 		{
-			name:         "POST whitespace color",
+			name:         "POST whitespace variety",
 			method:       "POST",
 			body:         validationBodies.bananaWithWhitespace,
 			wantStatus:   http.StatusBadRequest,
@@ -371,7 +371,7 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 			setupRepo:    panicBananaRepo,
 		},
 		{
-			name:         "POST color too long",
+			name:         "POST variety too long",
 			method:       "POST",
 			body:         validationBodies.bananaWithValueTooLong,
 			wantStatus:   http.StatusBadRequest,
@@ -545,7 +545,7 @@ func TestBananaHandlerUpdate(t *testing.T) {
 			},
 		},
 		{
-			name:         "PUT empty color",
+			name:         "PUT empty variety",
 			pathID:       validUuid,
 			body:         validationBodies.bananaWithEmptyValue,
 			wantStatus:   http.StatusBadRequest,
@@ -587,7 +587,7 @@ func TestBananaHandlerUpdate(t *testing.T) {
 			},
 		},
 		{
-			name:         "PUT whitespace color",
+			name:         "PUT whitespace variety",
 			pathID:       validUuid,
 			body:         validationBodies.bananaWithWhitespace,
 			wantStatus:   http.StatusBadRequest,
@@ -596,7 +596,7 @@ func TestBananaHandlerUpdate(t *testing.T) {
 			setupRepo:    func(pathID string) *mockBananaRepository { return emptyBananaRepo() },
 		},
 		{
-			name:         "PUT color too long",
+			name:         "PUT variety too long",
 			pathID:       validUuid,
 			body:         validationBodies.bananaWithValueTooLong,
 			wantStatus:   http.StatusBadRequest,

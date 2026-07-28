@@ -65,7 +65,7 @@ Return `ErrValidationFailed` from validation; no per-field error strings unless 
 | `GET`    | `/bananas`      | List all                              |
 | `GET`    | `/bananas/{id}` | Get by UUID                           |
 | `POST`   | `/bananas`      | Create; server sets `id`, `createdOn` |
-| `PUT`    | `/bananas/{id}` | Update `color`, `rating`; 404 if missing |
+| `PUT`    | `/bananas/{id}` | Update `variety`, `rating`; 404 if missing |
 | `DELETE` | `/bananas/{id}` | Hard delete; returns deleted item     |
 
 **Item shape** (single banana in create/get/update/delete responses; list returns an array of the same shape):
@@ -73,19 +73,19 @@ Return `ErrValidationFailed` from validation; no per-field error strings unless 
 ```json
 {
   "id": "uuid",
-  "color": "string",
+  "variety": "string",
   "rating": 50,
   "createdOn": 1717516800000
 }
 ```
 
-**Create body** (POST): `{ "color": "string", "rating": 0 }`
+**Create body** (POST): `{ "variety": "string", "rating": 0 }`
 
-**Update body** (PUT): `{ "color": "string", "rating": 0 }`
+**Update body** (PUT): `{ "variety": "string", "rating": 0 }`
 
 **List** (`GET /bananas`): `data` is an array of item shape. The repository scans the full table (DynamoDB pagination is handled internally, not exposed over HTTP).
 
-**Validation:** `color` required on create/update, 1–100 Unicode characters (`domain.DefaultMinStringLength`–`DefaultMaxStringLength`). `rating` required on create/update, integer 0–100 (`domain.DefaultMinInt`–`DefaultMaxInt`). Failures → 400 `validation failed`. Path `{id}` must be UUID → 400 `invalid id`.
+**Validation:** `variety` required on create/update, 1–100 Unicode characters (`domain.DefaultMinStringLength`–`DefaultMaxStringLength`). `rating` required on create/update, integer 0–100 (`domain.DefaultMinInt`–`DefaultMaxInt`). Failures → 400 `validation failed`. Path `{id}` must be UUID → 400 `invalid id`.
 
 ## Development
 

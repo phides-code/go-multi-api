@@ -9,8 +9,8 @@ import (
 	"github.com/phides-code/go-multi-api/internal/banana"
 )
 
-// TestBananaColor is the canonical valid color in handler and DynamoDB tests.
-const TestBananaColor = "yellow"
+// TestBananaVariety is the canonical valid variety in handler and DynamoDB tests.
+const TestBananaVariety = "yellow"
 
 // TestBananaRating is the canonical valid rating in handler and DynamoDB tests.
 const TestBananaRating = 50
@@ -19,9 +19,9 @@ const TestBananaRating = 50
 const TestStoredBananaCreatedOn uint64 = 12345
 
 const (
-	ListBananaColorFirst  = "yellow"
-	ListBananaColorSecond = "green"
-	ListBananaColorThird  = "brown"
+	ListBananaVarietyFirst  = "yellow"
+	ListBananaVarietySecond = "green"
+	ListBananaVarietyThird  = "brown"
 )
 
 const (
@@ -33,13 +33,13 @@ const (
 // BananaBody is the create/update request payload for banana HTTP tests.
 // Declared independently of banana.Banana so tag regressions surface as test failures.
 type BananaBody struct {
-	Color  string `json:"color"`
+	Variety  string `json:"variety"`
 	Rating int    `json:"rating"`
 }
 
 // ValidBananaBody returns a BananaBody with canonical valid field values.
 func ValidBananaBody() BananaBody {
-	return BananaBody{Color: TestBananaColor, Rating: TestBananaRating}
+	return BananaBody{Variety: TestBananaVariety, Rating: TestBananaRating}
 }
 
 // JSON marshals the body to a request payload string.
@@ -58,7 +58,7 @@ func BananaWithID(body BananaBody, createdOn uint64) (id string, b banana.Banana
 	id = uuid.NewString()
 	b = banana.Banana{
 		ID:        id,
-		Color:     body.Color,
+		Variety:     body.Variety,
 		Rating:    body.Rating,
 		CreatedOn: createdOn,
 	}
@@ -70,17 +70,17 @@ func BananaWithID(body BananaBody, createdOn uint64) (id string, b banana.Banana
 func ListBananas(withTimestamps bool) (first, second, third banana.Banana) {
 	first = banana.Banana{
 		ID:     uuid.NewString(),
-		Color:  ListBananaColorFirst,
+		Variety:  ListBananaVarietyFirst,
 		Rating: ListBananaRatingFirst,
 	}
 	second = banana.Banana{
 		ID:     uuid.NewString(),
-		Color:  ListBananaColorSecond,
+		Variety:  ListBananaVarietySecond,
 		Rating: ListBananaRatingSecond,
 	}
 	third = banana.Banana{
 		ID:     uuid.NewString(),
-		Color:  ListBananaColorThird,
+		Variety:  ListBananaVarietyThird,
 		Rating: ListBananaRatingThird,
 	}
 	if withTimestamps {
