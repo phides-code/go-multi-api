@@ -41,6 +41,11 @@ func ErrorResponse(statusCode int, message string) (events.APIGatewayProxyRespon
 	return JSONResponse(statusCode, nil, &message)
 }
 
+// ClientErrorResponse maps a domain sentinel (or wrapped sentinel) to status + envelope message.
+func ClientErrorResponse(err error) (events.APIGatewayProxyResponse, error) {
+	return ErrorResponse(HTTPStatusForError(err), ClientErrorMessage(err))
+}
+
 func strPtr(s string) *string {
 	return &s
 }

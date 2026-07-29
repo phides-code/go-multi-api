@@ -67,7 +67,7 @@ func TestBananaHandlerCreate(t *testing.T) {
 				}
 			},
 			wantStatus:   http.StatusConflict,
-			wantErrorMsg: "already exists",
+			wantErrorMsg: domain.ErrAlreadyExists.Error(),
 		},
 	}
 
@@ -151,7 +151,7 @@ func TestBananaHandlerDelete(t *testing.T) {
 			pathID:       "bad id",
 			wantStatus:   http.StatusBadRequest,
 			wantBanana:   nil,
-			wantErrorMsg: "invalid id",
+			wantErrorMsg: domain.ErrInvalidID.Error(),
 			setupRepo:    func(pathID string) *mockBananaRepository { return emptyBananaRepo() },
 		},
 		{
@@ -159,7 +159,7 @@ func TestBananaHandlerDelete(t *testing.T) {
 			pathID:       validUuid,
 			wantStatus:   http.StatusNotFound,
 			wantBanana:   nil,
-			wantErrorMsg: "not found",
+			wantErrorMsg: domain.ErrNotFound.Error(),
 			setupRepo: func(pathID string) *mockBananaRepository {
 				return &mockBananaRepository{
 					deleteFn: func(_ context.Context, id string) (banana.Banana, error) {
@@ -256,7 +256,7 @@ func TestBananaHandlerGetByID(t *testing.T) {
 			pathID:       "bad id",
 			wantStatus:   http.StatusBadRequest,
 			wantBanana:   nil,
-			wantErrorMsg: "invalid id",
+			wantErrorMsg: domain.ErrInvalidID.Error(),
 			setupRepo:    func(pathID string) *mockBananaRepository { return emptyBananaRepo() },
 		},
 		{
@@ -264,7 +264,7 @@ func TestBananaHandlerGetByID(t *testing.T) {
 			pathID:       validUuid,
 			wantStatus:   http.StatusNotFound,
 			wantBanana:   nil,
-			wantErrorMsg: "not found",
+			wantErrorMsg: domain.ErrNotFound.Error(),
 			setupRepo: func(pathID string) *mockBananaRepository {
 				return &mockBananaRepository{
 					getFn: func(_ context.Context, id string) (banana.Banana, error) {
@@ -345,14 +345,14 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 			method:       "POST",
 			body:         "{not json",
 			wantStatus:   http.StatusBadRequest,
-			wantErrorMsg: "invalid json",
+			wantErrorMsg: domain.ErrInvalidJSON.Error(),
 		},
 		{
 			name:         "POST empty descriptor",
 			method:       "POST",
 			body:         validationBodies.bananaWithEmptyValue,
 			wantStatus:   http.StatusBadRequest,
-			wantErrorMsg: "validation failed",
+			wantErrorMsg: domain.ErrValidationFailed.Error(),
 			setupRepo:    panicBananaRepo,
 		},
 		{
@@ -360,14 +360,14 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 			method:       "PATCH",
 			body:         "",
 			wantStatus:   http.StatusMethodNotAllowed,
-			wantErrorMsg: "method not allowed",
+			wantErrorMsg: domain.ErrMethodNotAllowed.Error(),
 		},
 		{
 			name:         "POST whitespace descriptor",
 			method:       "POST",
 			body:         validationBodies.bananaWithWhitespace,
 			wantStatus:   http.StatusBadRequest,
-			wantErrorMsg: "validation failed",
+			wantErrorMsg: domain.ErrValidationFailed.Error(),
 			setupRepo:    panicBananaRepo,
 		},
 		{
@@ -375,7 +375,7 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 			method:       "POST",
 			body:         validationBodies.bananaWithValueTooLong,
 			wantStatus:   http.StatusBadRequest,
-			wantErrorMsg: "validation failed",
+			wantErrorMsg: domain.ErrValidationFailed.Error(),
 			setupRepo:    panicBananaRepo,
 		},
 		{
@@ -383,7 +383,7 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 			method:       "POST",
 			body:         validationBodies.bananaWithRatingBelowMin,
 			wantStatus:   http.StatusBadRequest,
-			wantErrorMsg: "validation failed",
+			wantErrorMsg: domain.ErrValidationFailed.Error(),
 			setupRepo:    panicBananaRepo,
 		},
 		{
@@ -391,7 +391,7 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 			method:       "POST",
 			body:         validationBodies.bananaWithRatingAboveMax,
 			wantStatus:   http.StatusBadRequest,
-			wantErrorMsg: "validation failed",
+			wantErrorMsg: domain.ErrValidationFailed.Error(),
 			setupRepo:    panicBananaRepo,
 		},
 	}
@@ -528,7 +528,7 @@ func TestBananaHandlerUpdate(t *testing.T) {
 			body:         validUpdateBody,
 			wantStatus:   http.StatusBadRequest,
 			wantBanana:   nil,
-			wantErrorMsg: "invalid id",
+			wantErrorMsg: domain.ErrInvalidID.Error(),
 			setupRepo: func(pathID string) *mockBananaRepository {
 				return emptyBananaRepo()
 			},
@@ -539,7 +539,7 @@ func TestBananaHandlerUpdate(t *testing.T) {
 			body:         "not json",
 			wantStatus:   http.StatusBadRequest,
 			wantBanana:   nil,
-			wantErrorMsg: "invalid json",
+			wantErrorMsg: domain.ErrInvalidJSON.Error(),
 			setupRepo: func(pathID string) *mockBananaRepository {
 				return emptyBananaRepo()
 			},
@@ -550,7 +550,7 @@ func TestBananaHandlerUpdate(t *testing.T) {
 			body:         validationBodies.bananaWithEmptyValue,
 			wantStatus:   http.StatusBadRequest,
 			wantBanana:   nil,
-			wantErrorMsg: "validation failed",
+			wantErrorMsg: domain.ErrValidationFailed.Error(),
 			setupRepo:    func(pathID string) *mockBananaRepository { return emptyBananaRepo() },
 		},
 		{
@@ -559,7 +559,7 @@ func TestBananaHandlerUpdate(t *testing.T) {
 			wantStatus:   http.StatusNotFound,
 			body:         validUpdateBody,
 			wantBanana:   nil,
-			wantErrorMsg: "not found",
+			wantErrorMsg: domain.ErrNotFound.Error(),
 			setupRepo: func(pathID string) *mockBananaRepository {
 				return &mockBananaRepository{
 					updateFn: func(_ context.Context, b banana.Banana) (banana.Banana, error) {
@@ -592,7 +592,7 @@ func TestBananaHandlerUpdate(t *testing.T) {
 			body:         validationBodies.bananaWithWhitespace,
 			wantStatus:   http.StatusBadRequest,
 			wantBanana:   nil,
-			wantErrorMsg: "validation failed",
+			wantErrorMsg: domain.ErrValidationFailed.Error(),
 			setupRepo:    func(pathID string) *mockBananaRepository { return emptyBananaRepo() },
 		},
 		{
@@ -601,7 +601,7 @@ func TestBananaHandlerUpdate(t *testing.T) {
 			body:         validationBodies.bananaWithValueTooLong,
 			wantStatus:   http.StatusBadRequest,
 			wantBanana:   nil,
-			wantErrorMsg: "validation failed",
+			wantErrorMsg: domain.ErrValidationFailed.Error(),
 			setupRepo:    func(pathID string) *mockBananaRepository { return emptyBananaRepo() },
 		},
 		{
@@ -610,7 +610,7 @@ func TestBananaHandlerUpdate(t *testing.T) {
 			body:         validationBodies.bananaWithRatingBelowMin,
 			wantStatus:   http.StatusBadRequest,
 			wantBanana:   nil,
-			wantErrorMsg: "validation failed",
+			wantErrorMsg: domain.ErrValidationFailed.Error(),
 			setupRepo:    func(pathID string) *mockBananaRepository { return emptyBananaRepo() },
 		},
 		{
@@ -619,7 +619,7 @@ func TestBananaHandlerUpdate(t *testing.T) {
 			body:         validationBodies.bananaWithRatingAboveMax,
 			wantStatus:   http.StatusBadRequest,
 			wantBanana:   nil,
-			wantErrorMsg: "validation failed",
+			wantErrorMsg: domain.ErrValidationFailed.Error(),
 			setupRepo:    func(pathID string) *mockBananaRepository { return emptyBananaRepo() },
 		},
 	}

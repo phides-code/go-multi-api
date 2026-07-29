@@ -13,8 +13,6 @@ import (
 	"github.com/phides-code/go-multi-api/internal/domain"
 )
 
-const tableName = "AppnameBananas"
-
 type dynamoRepository struct {
 	client dynamoAPI
 }
@@ -38,7 +36,7 @@ func (r *dynamoRepository) Create(ctx context.Context, banana Banana) (Banana, e
 	}
 
 	_, err = r.client.PutItem(ctx, &dynamodb.PutItemInput{
-		TableName:           aws.String(tableName),
+		TableName:           aws.String(TableName),
 		Item:                item,
 		ConditionExpression: aws.String("attribute_not_exists(id)"),
 	})
@@ -56,7 +54,7 @@ func (r *dynamoRepository) Create(ctx context.Context, banana Banana) (Banana, e
 
 func (r *dynamoRepository) GetByID(ctx context.Context, id string) (Banana, error) {
 	out, err := r.client.GetItem(ctx, &dynamodb.GetItemInput{
-		TableName: aws.String(tableName),
+		TableName: aws.String(TableName),
 		Key: map[string]types.AttributeValue{
 			"id": &types.AttributeValueMemberS{Value: id},
 		},
@@ -82,7 +80,7 @@ func (r *dynamoRepository) List(ctx context.Context) ([]Banana, error) {
 
 	for {
 		input := &dynamodb.ScanInput{
-			TableName: aws.String(tableName),
+			TableName: aws.String(TableName),
 		}
 		if startKey != nil {
 			input.ExclusiveStartKey = startKey
@@ -112,7 +110,7 @@ func (r *dynamoRepository) List(ctx context.Context) ([]Banana, error) {
 
 func (r *dynamoRepository) Update(ctx context.Context, banana Banana) (Banana, error) {
 	out, err := r.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
-		TableName: aws.String(tableName),
+		TableName: aws.String(TableName),
 		Key: map[string]types.AttributeValue{
 			"id": &types.AttributeValueMemberS{Value: banana.ID},
 		},
@@ -146,7 +144,7 @@ func (r *dynamoRepository) Update(ctx context.Context, banana Banana) (Banana, e
 
 func (r *dynamoRepository) Delete(ctx context.Context, id string) (Banana, error) {
 	out, err := r.client.DeleteItem(ctx, &dynamodb.DeleteItemInput{
-		TableName: aws.String(tableName),
+		TableName: aws.String(TableName),
 		Key: map[string]types.AttributeValue{
 			"id": &types.AttributeValueMemberS{Value: id},
 		},

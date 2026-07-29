@@ -7,7 +7,7 @@ Full walkthrough: [Adding a new table](../README.md#adding-a-new-table).
 ## TDD order
 
 1. **Failing handler test** — one vertical slice (e.g. `GET /apples` → empty list) with a mock repo in `internal/<resource>/`.
-2. **Router integration test** — `Register("<resources>", …)` in `internal/<resource>/router_test.go`.
+2. **Router integration test** — `Register(<resource>.PathPrefix, …)` in `internal/<resource>/router_test.go`.
 3. **Entity + validation tests** — `internal/<resource>/<resource>_test.go`.
 4. **Handler** — minimum code to pass step 1; expand tests per method.
 5. **DynamoDB tests** → table-driven repository tests in `internal/<resource>/dynamodb_test.go` → `dynamodb.go` implementation.
@@ -22,7 +22,7 @@ Copy `internal/banana/` → `internal/<resource>/` and rename. One package per r
 
 | File | Reference (banana) |
 | ---- | ---------------- |
-| `internal/<resource>/<resource>.go` | `banana.go` — entity, validation (default string bounds from `domain`) |
+| `internal/<resource>/<resource>.go` | `banana.go` — `PathPrefix`, `TableName`, entity, validation (default string bounds from `domain`) |
 | `internal/<resource>/repository.go` | `repository.go` — `Repository` interface |
 | `internal/<resource>/handler.go` | `handler.go` — HTTP handler; `NewHandler(repo, logger)` |
 | `internal/<resource>/dynamodb.go` | `dynamodb.go` — `NewRepository(client)` DynamoDB impl |
@@ -50,9 +50,9 @@ Copy `internal/banana/` → `internal/<resource>/` and rename. One package per r
 
 ## Files to edit
 
-- [ ] `internal/app/app.go` — reuse shared `client := dynamodb.NewFromConfig(cfg)`; `<resource>.NewRepository(client)`; `g.Register("<resources>", <resource>.NewHandler(...))`
+- [ ] `internal/app/app.go` — reuse shared `client := dynamodb.NewFromConfig(cfg)`; `<resource>.NewRepository(client)`; `g.Register(<resource>.PathPrefix, <resource>.NewHandler(...))`
 - [ ] `internal/app/<resource>_stub_test.go` — no-op `Repository` for composition smoke tests (mirror `banana_stub_test.go`; keep under `app`, not `internal/<resource>/`)
-- [ ] `internal/app/app_test.go` — extend `testGateway` with the new stub; add `assertWiringSmokeGET(t, testGateway(t), "/<resources>")`
+- [ ] `internal/app/app_test.go` — extend `testGateway` with the new stub; add `assertWiringSmokeGET(t, testGateway(t), "/"+<resource>.PathPrefix)`
 - [ ] `internal/gateway/gateway_test.go` — generic routing/auth only; resource integration lives in `internal/<resource>/router_test.go`
 - [ ] `template.yml` — table, **one `DynamoDBCrudPolicy` per table**, API events
 - [ ] `README.md` — API contract: endpoints, item shape, create/update bodies, validation
@@ -63,7 +63,8 @@ Copy `internal/banana/` → `internal/<resource>/` and rename. One package per r
 |---|--------|
 | SAM logical ID | `Appname<Resources>Table` |
 | Physical `TableName` | `Appname<Resources>` |
-| Go constant | `"Appname<Resources>"` in `<resource>/dynamodb.go` |
+| Go constant | `<resource>.TableName` in `<resource>.go` (used by `dynamodb.go`) |
+| Path prefix | `<resource>.PathPrefix` (used by `app.Build` / `Register`) |
 
 ## SAM API event names
 
@@ -72,7 +73,7 @@ Match the logical ID to the HTTP method (see `template.yml` bananas): `PostBanan
 ## Second table in the same project
 
 1. Copy `internal/banana/` → `internal/<resource>/` and rename symbols.
-2. In `internal/app/app.go` — `<resource>.NewRepository(client)` on the existing shared client; `g.Register("<resources>", <resource>.NewHandler(...))`.
+2. In `internal/app/app.go` — `<resource>.NewRepository(client)` on the existing shared client; `g.Register(<resource>.PathPrefix, <resource>.NewHandler(...))`.
 3. In `template.yml` — add table, append `DynamoDBCrudPolicy`, add API events.
 4. Add `internal/app/<resource>_stub_test.go`; extend `testGateway` and add a smoke path in `app_test.go`.
 5. Add `internal/testutil/<resource>_fixtures.go` if handler and DynamoDB tests share fixtures.

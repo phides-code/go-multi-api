@@ -26,11 +26,11 @@ func TestGatewayRoutesBananas(t *testing.T) {
 	id := uuid.NewString()
 	repo := dispatchBananaRepo()
 	g := gateway.NewGatewayWithCFTToken(platform.NewLogger(), testutil.TestCFTToken)
-	g.Register("bananas", banana.NewHandler(repo, platform.NewLogger()))
+	g.Register(banana.PathPrefix, banana.NewHandler(repo, platform.NewLogger()))
 
 	resp, err := g.Handle(context.Background(), events.APIGatewayProxyRequest{
 		HTTPMethod:     "GET",
-		Path:           "/bananas/" + id,
+		Path:           "/" + banana.PathPrefix + "/" + id,
 		PathParameters: map[string]string{"id": id},
 		Headers:        cfTokenHeaders(testutil.TestCFTToken),
 	})
@@ -48,11 +48,11 @@ func TestGatewaySkipsCFTTokenUnderSAMLocal(t *testing.T) {
 	id := uuid.NewString()
 	repo := dispatchBananaRepo()
 	g := gateway.NewGatewayWithCFTToken(platform.NewLogger(), testutil.TestCFTToken)
-	g.Register("bananas", banana.NewHandler(repo, platform.NewLogger()))
+	g.Register(banana.PathPrefix, banana.NewHandler(repo, platform.NewLogger()))
 
 	resp, err := g.Handle(context.Background(), events.APIGatewayProxyRequest{
 		HTTPMethod:     "GET",
-		Path:           "/bananas/" + id,
+		Path:           "/" + banana.PathPrefix + "/" + id,
 		PathParameters: map[string]string{"id": id},
 	})
 	if err != nil {
@@ -67,11 +67,11 @@ func TestGatewayAllowsOptionsWithoutCFTToken(t *testing.T) {
 	t.Parallel()
 
 	g := gateway.NewGatewayWithCFTToken(platform.NewLogger(), testutil.TestCFTToken)
-	g.Register("bananas", banana.NewHandler(emptyBananaRepo(), platform.NewLogger()))
+	g.Register(banana.PathPrefix, banana.NewHandler(emptyBananaRepo(), platform.NewLogger()))
 
 	resp, err := g.Handle(context.Background(), events.APIGatewayProxyRequest{
 		HTTPMethod: "OPTIONS",
-		Path:       "/bananas",
+		Path:       "/" + banana.PathPrefix,
 	})
 	if err != nil {
 		t.Fatalf("handle: %v", err)

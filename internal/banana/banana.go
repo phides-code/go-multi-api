@@ -3,22 +3,28 @@ package banana
 
 import "github.com/phides-code/go-multi-api/internal/domain"
 
+// PathPrefix is the first URL segment registered on the gateway (e.g. /bananas).
+const PathPrefix = "bananas"
+
+// TableName is the DynamoDB table physical name (must match template.yml).
+const TableName = "AppnameBananas"
+
 type Banana struct {
-	ID        string `json:"id" dynamodbav:"id"`
-	Descriptor     string `json:"descriptor" dynamodbav:"descriptor"`
-	Rating    int    `json:"rating" dynamodbav:"rating"`
-	CreatedOn uint64 `json:"createdOn" dynamodbav:"createdOn"`
+	ID         string `json:"id" dynamodbav:"id"`
+	Descriptor string `json:"descriptor" dynamodbav:"descriptor"`
+	Rating     int    `json:"rating" dynamodbav:"rating"`
+	CreatedOn  uint64 `json:"createdOn" dynamodbav:"createdOn"`
 }
 
 type CreateInput struct {
-	Descriptor  string
-	Rating int
+	Descriptor string
+	Rating     int
 }
 
 type UpdateInput struct {
-	ID     string
-	Descriptor  string
-	Rating int
+	ID         string
+	Descriptor string
+	Rating     int
 }
 
 func validateDescriptor(descriptor string) error {

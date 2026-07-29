@@ -25,6 +25,6 @@ func Build(ctx context.Context, logger *platform.Logger) (*gateway.Gateway, erro
 
 func buildGateway(logger *platform.Logger, bananaRepo banana.Repository) *gateway.Gateway {
 	g := gateway.NewGateway(logger)
-	g.Register("bananas", banana.NewHandler(bananaRepo, logger))
+	g.Register(banana.PathPrefix, banana.NewHandler(bananaRepo, logger))
 	return g
 }

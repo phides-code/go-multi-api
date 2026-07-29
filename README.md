@@ -53,7 +53,7 @@ Success: `data` set, `error` null. Failure: opposite.
 | 404  | `not found`             | `ErrNotFound`         | Missing item         |
 | 409  | `already exists`        | `ErrAlreadyExists`    | Duplicate create     |
 | 405  | `method not allowed`    | `ErrMethodNotAllowed` | Unsupported method   |
-| 401  | `unauthorized`          | —                     | Bad/missing token    |
+| 401  | `unauthorized`          | `ErrUnauthorized`     | Bad/missing token    |
 | 500  | `internal server error` | —                     | Unexpected failure   |
 
 Return `ErrValidationFailed` from validation; no per-field error strings unless you extend platform mapping and this table. Client-facing text comes from each sentinel's `Error()` in `domain/errors.go` via `platform.ClientErrorMessage`. New cross-cutting errors: add sentinel in `domain/errors.go`, add a row to `clientErrorMappings` in `platform/errors.go`, document here.

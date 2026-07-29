@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/phides-code/go-multi-api/internal/domain"
 	"github.com/phides-code/go-multi-api/internal/platform"
 )
 
@@ -40,7 +41,7 @@ func (g *Gateway) Handle(ctx context.Context, req events.APIGatewayProxyRequest)
 	if req.HTTPMethod != http.MethodOptions &&
 		!platform.LocalMode() &&
 		!platform.ValidCFTToken(g.cfToken, req.Headers) {
-		return platform.ErrorResponse(http.StatusUnauthorized, "unauthorized")
+		return platform.ClientErrorResponse(domain.ErrUnauthorized)
 	}
 
 	logger := g.logger.WithRequestID(req.RequestContext.RequestID)
@@ -52,12 +53,12 @@ func (g *Gateway) Handle(ctx context.Context, req events.APIGatewayProxyRequest)
 	segment, ok := firstPathSegment(req.Path)
 
 	if !ok {
-		return platform.ErrorResponse(404, "not found")
+		return platform.ClientErrorResponse(domain.ErrNotFound)
 	}
 
 	handler, ok := g.handlers[segment]
 	if !ok {
-		return platform.ErrorResponse(404, "not found")
+		return platform.ClientErrorResponse(domain.ErrNotFound)
 	}
 
 	return handler.Handle(ctx, req)

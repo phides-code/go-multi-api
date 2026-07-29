@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/phides-code/go-multi-api/internal/domain"
 	"github.com/phides-code/go-multi-api/internal/platform"
 )
 
@@ -35,7 +36,8 @@ func TestSuccessResponseEnvelope(t *testing.T) {
 func TestErrorResponseEnvelope(t *testing.T) {
 	t.Parallel()
 
-	resp, err := platform.ErrorResponse(http.StatusBadRequest, "invalid id")
+	msg := domain.ErrInvalidID.Error()
+	resp, err := platform.ErrorResponse(http.StatusBadRequest, msg)
 	if err != nil {
 		t.Fatalf("error response: %v", err)
 	}
@@ -47,7 +49,28 @@ func TestErrorResponseEnvelope(t *testing.T) {
 	if envelope.Data != nil {
 		t.Fatalf("expected nil data, got %v", envelope.Data)
 	}
-	if envelope.Error == nil || *envelope.Error != "invalid id" {
+	if envelope.Error == nil || *envelope.Error != msg {
 		t.Fatalf("unexpected error field: %v", envelope.Error)
+	}
+}
+
+func TestClientErrorResponse(t *testing.T) {
+	t.Parallel()
+
+	resp, err := platform.ClientErrorResponse(domain.ErrUnauthorized)
+	if err != nil {
+		t.Fatalf("client error response: %v", err)
+	}
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusUnauthorized)
+	}
+
+	var envelope platform.APIResponse
+	if err := json.Unmarshal([]byte(resp.Body), &envelope); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	want := domain.ErrUnauthorized.Error()
+	if envelope.Error == nil || *envelope.Error != want {
+		t.Fatalf("error = %v, want %q", envelope.Error, want)
 	}
 }

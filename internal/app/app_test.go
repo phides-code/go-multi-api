@@ -7,13 +7,14 @@ import (
 	"testing"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/phides-code/go-multi-api/internal/banana"
 	"github.com/phides-code/go-multi-api/internal/gateway"
 	"github.com/phides-code/go-multi-api/internal/platform"
 	"github.com/phides-code/go-multi-api/internal/testutil"
 )
 
 func TestWiringSmokeGETBananas(t *testing.T) {
-	assertWiringSmokeGET(t, testGateway(t), "/bananas")
+	assertWiringSmokeGET(t, testGateway(t), "/"+banana.PathPrefix)
 }
 
 func testGateway(t *testing.T) *gateway.Gateway {

@@ -6,6 +6,7 @@ import "errors"
 
 var (
 	ErrNotFound         = errors.New("not found")
+	ErrUnauthorized     = errors.New("unauthorized")
 	ErrInvalidID        = errors.New("invalid id")
 	ErrValidationFailed = errors.New("validation failed")
 	ErrInvalidJSON      = errors.New("invalid json")
