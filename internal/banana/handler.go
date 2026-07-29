@@ -65,21 +65,21 @@ func (h *Handler) getByID(ctx context.Context, id string) (events.APIGatewayProx
 
 func (h *Handler) create(ctx context.Context, body string) (events.APIGatewayProxyResponse, error) {
 	var payload struct {
-		Variety  string `json:"variety"`
+		Descriptor  string `json:"descriptor"`
 		Rating int    `json:"rating"`
 	}
 	if err := json.Unmarshal([]byte(body), &payload); err != nil {
 		return h.errorResponse(ctx, domain.ErrInvalidJSON, "create banana")
 	}
 
-	input := CreateInput{Variety: payload.Variety, Rating: payload.Rating}
+	input := CreateInput{Descriptor: payload.Descriptor, Rating: payload.Rating}
 	if err := ValidateCreateInput(input); err != nil {
 		return h.errorResponse(ctx, err, "create banana")
 	}
 
 	banana := Banana{
 		ID:        domain.NewID(),
-		Variety:     payload.Variety,
+		Descriptor:     payload.Descriptor,
 		Rating:    payload.Rating,
 		CreatedOn: uint64(time.Now().UnixMilli()),
 	}
@@ -98,21 +98,21 @@ func (h *Handler) update(ctx context.Context, id, body string) (events.APIGatewa
 	}
 
 	var payload struct {
-		Variety  string `json:"variety"`
+		Descriptor  string `json:"descriptor"`
 		Rating int    `json:"rating"`
 	}
 	if err := json.Unmarshal([]byte(body), &payload); err != nil {
 		return h.errorResponse(ctx, domain.ErrInvalidJSON, "update banana")
 	}
 
-	input := UpdateInput{ID: id, Variety: payload.Variety, Rating: payload.Rating}
+	input := UpdateInput{ID: id, Descriptor: payload.Descriptor, Rating: payload.Rating}
 	if err := ValidateUpdateInput(input); err != nil {
 		return h.errorResponse(ctx, err, "update banana")
 	}
 
 	updated, err := h.repo.Update(ctx, Banana{
 		ID:     id,
-		Variety:  payload.Variety,
+		Descriptor:  payload.Descriptor,
 		Rating: payload.Rating,
 	})
 	if err != nil {

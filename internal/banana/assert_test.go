@@ -58,7 +58,7 @@ func assertBananaDataKeys(t *testing.T, envelope platform.APIResponse) {
 		t.Fatalf("unmarshal data keys: %v", err)
 	}
 
-	want := []string{"variety", "createdOn", "id", "rating"}
+	want := []string{"descriptor", "createdOn", "id", "rating"}
 	if len(keys) != len(want) {
 		t.Fatalf("data has %d keys %v, want exactly %v", len(keys), maps.Keys(keys), want)
 	}

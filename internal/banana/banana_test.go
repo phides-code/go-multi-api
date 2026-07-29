@@ -15,7 +15,7 @@ func TestValidateCreateInput(t *testing.T) {
 
 	validCreateInput := func() banana.CreateInput {
 		return banana.CreateInput{
-			Variety:  testutil.TestBananaVariety,
+			Descriptor:  testutil.TestBananaDescriptor,
 			Rating: testutil.TestBananaRating,
 		}
 	}
@@ -27,10 +27,10 @@ func TestValidateCreateInput(t *testing.T) {
 	}{
 		{name: "valid", input: validCreateInput(), wantErr: false},
 		{
-			name: "empty variety",
+			name: "empty descriptor",
 			input: func() banana.CreateInput {
 				in := validCreateInput()
-				in.Variety = ""
+				in.Descriptor = ""
 				return in
 			}(),
 			wantErr: true,
@@ -79,7 +79,7 @@ func TestValidateUpdateInput(t *testing.T) {
 	validUpdateInput := func() banana.UpdateInput {
 		return banana.UpdateInput{
 			ID:     validID,
-			Variety:  testutil.TestBananaVariety,
+			Descriptor:  testutil.TestBananaDescriptor,
 			Rating: testutil.TestBananaRating,
 		}
 	}
@@ -100,10 +100,10 @@ func TestValidateUpdateInput(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "empty variety",
+			name: "empty descriptor",
 			input: func() banana.UpdateInput {
 				in := validUpdateInput()
-				in.Variety = ""
+				in.Descriptor = ""
 				return in
 			}(),
 			wantErr: true,

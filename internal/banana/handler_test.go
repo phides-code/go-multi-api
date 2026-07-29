@@ -26,7 +26,7 @@ func TestBananaHandlerCreate(t *testing.T) {
 		setupRepo    func() *mockBananaRepository
 		wantStatus   int
 		wantErrorMsg string
-		wantVariety    string
+		wantDescriptor    string
 		wantRating   int
 	}{
 		{
@@ -40,7 +40,7 @@ func TestBananaHandlerCreate(t *testing.T) {
 				}
 			},
 			wantStatus: http.StatusCreated,
-			wantVariety:  testutil.TestBananaVariety,
+			wantDescriptor:  testutil.TestBananaDescriptor,
 			wantRating: testutil.TestBananaRating,
 		},
 		{
@@ -95,8 +95,8 @@ func TestBananaHandlerCreate(t *testing.T) {
 			banana := decodeBananaData(t, envelope)
 			assertBananaDataKeys(t, envelope)
 
-			if banana.Variety != tt.wantVariety {
-				t.Fatalf("variety = %q, want %q", banana.Variety, tt.wantVariety)
+			if banana.Descriptor != tt.wantDescriptor {
+				t.Fatalf("descriptor = %q, want %q", banana.Descriptor, tt.wantDescriptor)
 			}
 			if banana.Rating != tt.wantRating {
 				t.Fatalf("rating = %d, want %d", banana.Rating, tt.wantRating)
@@ -348,7 +348,7 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 			wantErrorMsg: "invalid json",
 		},
 		{
-			name:         "POST empty variety",
+			name:         "POST empty descriptor",
 			method:       "POST",
 			body:         validationBodies.bananaWithEmptyValue,
 			wantStatus:   http.StatusBadRequest,
@@ -363,7 +363,7 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 			wantErrorMsg: "method not allowed",
 		},
 		{
-			name:         "POST whitespace variety",
+			name:         "POST whitespace descriptor",
 			method:       "POST",
 			body:         validationBodies.bananaWithWhitespace,
 			wantStatus:   http.StatusBadRequest,
@@ -371,7 +371,7 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 			setupRepo:    panicBananaRepo,
 		},
 		{
-			name:         "POST variety too long",
+			name:         "POST descriptor too long",
 			method:       "POST",
 			body:         validationBodies.bananaWithValueTooLong,
 			wantStatus:   http.StatusBadRequest,
@@ -545,7 +545,7 @@ func TestBananaHandlerUpdate(t *testing.T) {
 			},
 		},
 		{
-			name:         "PUT empty variety",
+			name:         "PUT empty descriptor",
 			pathID:       validUuid,
 			body:         validationBodies.bananaWithEmptyValue,
 			wantStatus:   http.StatusBadRequest,
@@ -587,7 +587,7 @@ func TestBananaHandlerUpdate(t *testing.T) {
 			},
 		},
 		{
-			name:         "PUT whitespace variety",
+			name:         "PUT whitespace descriptor",
 			pathID:       validUuid,
 			body:         validationBodies.bananaWithWhitespace,
 			wantStatus:   http.StatusBadRequest,
@@ -596,7 +596,7 @@ func TestBananaHandlerUpdate(t *testing.T) {
 			setupRepo:    func(pathID string) *mockBananaRepository { return emptyBananaRepo() },
 		},
 		{
-			name:         "PUT variety too long",
+			name:         "PUT descriptor too long",
 			pathID:       validUuid,
 			body:         validationBodies.bananaWithValueTooLong,
 			wantStatus:   http.StatusBadRequest,

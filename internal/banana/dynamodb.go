@@ -116,15 +116,15 @@ func (r *dynamoRepository) Update(ctx context.Context, banana Banana) (Banana, e
 		Key: map[string]types.AttributeValue{
 			"id": &types.AttributeValueMemberS{Value: banana.ID},
 		},
-		UpdateExpression:    aws.String("SET #rating = :rating, #variety = :variety"),
+		UpdateExpression:    aws.String("SET #descriptor = :descriptor, #rating = :rating"),
 		ConditionExpression: aws.String("attribute_exists(id)"),
 		ExpressionAttributeNames: map[string]string{
-			"#rating":  "rating",
-			"#variety": "variety",
+			"#descriptor": "descriptor",
+			"#rating":     "rating",
 		},
 		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":rating":  &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", banana.Rating)},
-			":variety": &types.AttributeValueMemberS{Value: banana.Variety},
+			":descriptor": &types.AttributeValueMemberS{Value: banana.Descriptor},
+			":rating":     &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", banana.Rating)},
 		},
 		ReturnValues: types.ReturnValueAllNew,
 	})
@@ -166,4 +166,3 @@ func (r *dynamoRepository) Delete(ctx context.Context, id string) (Banana, error
 
 	return deleted, nil
 }
-

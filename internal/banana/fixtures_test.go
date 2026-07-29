@@ -22,13 +22,13 @@ func newBananaValidationBodies(t *testing.T) bananaValidationBodies {
 	t.Helper()
 
 	bananaWithEmptyValue := testutil.ValidBananaBody()
-	bananaWithEmptyValue.Variety = ""
+	bananaWithEmptyValue.Descriptor = ""
 
 	bananaWithWhitespace := testutil.ValidBananaBody()
-	bananaWithWhitespace.Variety = "   "
+	bananaWithWhitespace.Descriptor = "   "
 
 	bananaWithValueTooLong := testutil.ValidBananaBody()
-	bananaWithValueTooLong.Variety = strings.Repeat("a", domain.DefaultMaxStringLength+1)
+	bananaWithValueTooLong.Descriptor = strings.Repeat("a", domain.DefaultMaxStringLength+1)
 
 	bananaWithRatingBelowMin := testutil.ValidBananaBody()
 	bananaWithRatingBelowMin.Rating = domain.DefaultMinInt - 1
