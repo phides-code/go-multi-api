@@ -3,7 +3,6 @@ package banana_test
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -20,76 +19,50 @@ func cfTokenHeaders(token string) map[string]string {
 	return map[string]string{platform.CFTTokenHeader: token}
 }
 
+func registeredBananaGateway(repo banana.Repository) *gateway.Gateway {
+	g := gateway.NewGatewayWithCFTToken(platform.NewLogger(), testutil.TestCFTToken)
+	g.Register(banana.PathPrefix, banana.NewHandler(repo, platform.NewLogger()))
+	return g
+}
+
 func TestGatewayRoutesBananas(t *testing.T) {
 	t.Parallel()
 
 	id := uuid.NewString()
-	repo := dispatchBananaRepo()
-	g := gateway.NewGatewayWithCFTToken(platform.NewLogger(), testutil.TestCFTToken)
-	g.Register(banana.PathPrefix, banana.NewHandler(repo, platform.NewLogger()))
+	g := registeredBananaGateway(dispatchBananaRepo())
 
 	resp, err := g.Handle(context.Background(), events.APIGatewayProxyRequest{
-		HTTPMethod:     "GET",
+		HTTPMethod:     http.MethodGet,
 		Path:           "/" + banana.PathPrefix + "/" + id,
 		PathParameters: map[string]string{"id": id},
 		Headers:        cfTokenHeaders(testutil.TestCFTToken),
 	})
-	if err != nil {
-		t.Fatalf("handle: %v", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusOK)
-	}
+	testutil.RequireHandle(t, resp, err, http.StatusOK)
 }
 
 func TestGatewaySkipsCFTTokenUnderSAMLocal(t *testing.T) {
 	t.Setenv("AWS_SAM_LOCAL", "true")
 
 	id := uuid.NewString()
-	repo := dispatchBananaRepo()
-	g := gateway.NewGatewayWithCFTToken(platform.NewLogger(), testutil.TestCFTToken)
-	g.Register(banana.PathPrefix, banana.NewHandler(repo, platform.NewLogger()))
+	g := registeredBananaGateway(dispatchBananaRepo())
 
 	resp, err := g.Handle(context.Background(), events.APIGatewayProxyRequest{
-		HTTPMethod:     "GET",
+		HTTPMethod:     http.MethodGet,
 		Path:           "/" + banana.PathPrefix + "/" + id,
 		PathParameters: map[string]string{"id": id},
 	})
-	if err != nil {
-		t.Fatalf("handle: %v", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusOK)
-	}
+	testutil.RequireHandle(t, resp, err, http.StatusOK)
 }
 
 func TestGatewayAllowsOptionsWithoutCFTToken(t *testing.T) {
 	t.Parallel()
 
-	g := gateway.NewGatewayWithCFTToken(platform.NewLogger(), testutil.TestCFTToken)
-	g.Register(banana.PathPrefix, banana.NewHandler(emptyBananaRepo(), platform.NewLogger()))
+	g := registeredBananaGateway(emptyBananaRepo())
 
 	resp, err := g.Handle(context.Background(), events.APIGatewayProxyRequest{
-		HTTPMethod: "OPTIONS",
+		HTTPMethod: http.MethodOptions,
 		Path:       "/" + banana.PathPrefix,
 	})
-	if err != nil {
-		t.Fatalf("handle: %v", err)
-	}
-
-	if resp.StatusCode != http.StatusMethodNotAllowed {
-		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusMethodNotAllowed)
-	}
-
-	var envelope platform.APIResponse
-	if err := json.Unmarshal([]byte(resp.Body), &envelope); err != nil {
-		t.Fatalf("unmarshal body: %v", err)
-	}
-	if envelope.Data != nil {
-		t.Fatalf("expected nil data, got %v", envelope.Data)
-	}
-	wantErr := domain.ErrMethodNotAllowed.Error()
-	if envelope.Error == nil || *envelope.Error != wantErr {
-		t.Fatalf("error = %v, want %q", envelope.Error, wantErr)
-	}
+	envelope := testutil.RequireHandle(t, resp, err, http.StatusMethodNotAllowed)
+	testutil.AssertAPIError(t, envelope, domain.ErrMethodNotAllowed.Error())
 }

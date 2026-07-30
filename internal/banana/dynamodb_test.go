@@ -15,6 +15,9 @@ import (
 	"github.com/phides-code/go-multi-api/internal/testutil"
 )
 
+// errDynamoUnavailable is the stub SDK failure used across repository mock cases.
+var errDynamoUnavailable = errors.New("dynamo unavailable")
+
 type mockDynamoClient struct {
 	getItemFn    func(ctx context.Context, params *awsdynamodb.GetItemInput, optFns ...func(*awsdynamodb.Options)) (*awsdynamodb.GetItemOutput, error)
 	deleteItemFn func(ctx context.Context, params *awsdynamodb.DeleteItemInput, optFns ...func(*awsdynamodb.Options)) (*awsdynamodb.DeleteItemOutput, error)
@@ -60,7 +63,6 @@ func TestBananaRepositoryGetByID(t *testing.T) {
 	t.Parallel()
 
 	validId, validBanana, item := storedBananaFixture(t)
-	errSDK := errors.New("dynamo unavailable")
 	tests := []struct {
 		name       string
 		setupMock  func(t *testing.T) *mockDynamoClient
@@ -96,12 +98,12 @@ func TestBananaRepositoryGetByID(t *testing.T) {
 			setupMock: func(_ *testing.T) *mockDynamoClient {
 				return &mockDynamoClient{
 					getItemFn: func(_ context.Context, _ *awsdynamodb.GetItemInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.GetItemOutput, error) {
-						return nil, errSDK
+						return nil, errDynamoUnavailable
 					},
 				}
 			},
 			wantBanana: banana.Banana{},
-			wantErr:    errSDK,
+			wantErr:    errDynamoUnavailable,
 		},
 	}
 
@@ -120,7 +122,6 @@ func TestBananaRepositoryDelete(t *testing.T) {
 	t.Parallel()
 
 	validId, validBanana, item := storedBananaFixture(t)
-	errSDK := errors.New("dynamo unavailable")
 	tests := []struct {
 		name       string
 		setupMock  func(t *testing.T) *mockDynamoClient
@@ -156,12 +157,12 @@ func TestBananaRepositoryDelete(t *testing.T) {
 			setupMock: func(_ *testing.T) *mockDynamoClient {
 				return &mockDynamoClient{
 					deleteItemFn: func(_ context.Context, _ *awsdynamodb.DeleteItemInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.DeleteItemOutput, error) {
-						return nil, errSDK
+						return nil, errDynamoUnavailable
 					},
 				}
 			},
 			wantBanana: banana.Banana{},
-			wantErr:    errSDK,
+			wantErr:    errDynamoUnavailable,
 		},
 	}
 
@@ -180,8 +181,6 @@ func TestBananaRepositoryUpdate(t *testing.T) {
 	t.Parallel()
 
 	updatedBanana := banana.Banana{ID: uuid.NewString(), Descriptor: "updated", Rating: 75, CreatedOn: 12345}
-	errSDK := errors.New("dynamo unavailable")
-
 	item, err := attributevalue.MarshalMap(updatedBanana)
 	if err != nil {
 		t.Fatal(err)
@@ -226,12 +225,12 @@ func TestBananaRepositoryUpdate(t *testing.T) {
 			setupMock: func(_ *testing.T) *mockDynamoClient {
 				return &mockDynamoClient{
 					updateItemFn: func(_ context.Context, _ *awsdynamodb.UpdateItemInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.UpdateItemOutput, error) {
-						return nil, errSDK
+						return nil, errDynamoUnavailable
 					},
 				}
 			},
 			wantBanana: banana.Banana{},
-			wantErr:    errSDK,
+			wantErr:    errDynamoUnavailable,
 		},
 	}
 
@@ -250,8 +249,6 @@ func TestBananaRepositoryCreate(t *testing.T) {
 	t.Parallel()
 
 	want := banana.Banana{ID: uuid.NewString(), Descriptor: "new", Rating: testutil.TestBananaRating, CreatedOn: 12345}
-	errSDK := errors.New("dynamo unavailable")
-
 	tests := []struct {
 		name       string
 		setupMock  func(t *testing.T) *mockDynamoClient
@@ -288,12 +285,12 @@ func TestBananaRepositoryCreate(t *testing.T) {
 			setupMock: func(_ *testing.T) *mockDynamoClient {
 				return &mockDynamoClient{
 					putItemFn: func(_ context.Context, _ *awsdynamodb.PutItemInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.PutItemOutput, error) {
-						return nil, errSDK
+						return nil, errDynamoUnavailable
 					},
 				}
 			},
 			wantBanana: banana.Banana{},
-			wantErr:    errSDK,
+			wantErr:    errDynamoUnavailable,
 		},
 	}
 
@@ -386,7 +383,7 @@ func TestBananaRepositoryList(t *testing.T) {
 			setupMock: func(_ *testing.T) *mockDynamoClient {
 				return &mockDynamoClient{
 					scanFn: func(_ context.Context, _ *awsdynamodb.ScanInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.ScanOutput, error) {
-						return nil, errors.New("dynamo unavailable")
+						return nil, errDynamoUnavailable
 					},
 				}
 			},

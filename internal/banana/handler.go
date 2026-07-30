@@ -65,8 +65,8 @@ func (h *Handler) getByID(ctx context.Context, id string) (events.APIGatewayProx
 
 func (h *Handler) create(ctx context.Context, body string) (events.APIGatewayProxyResponse, error) {
 	var payload struct {
-		Descriptor  string `json:"descriptor"`
-		Rating int    `json:"rating"`
+		Descriptor string `json:"descriptor"`
+		Rating     int    `json:"rating"`
 	}
 	if err := json.Unmarshal([]byte(body), &payload); err != nil {
 		return h.errorResponse(ctx, domain.ErrInvalidJSON, "create banana")
@@ -78,10 +78,10 @@ func (h *Handler) create(ctx context.Context, body string) (events.APIGatewayPro
 	}
 
 	banana := Banana{
-		ID:        domain.NewID(),
-		Descriptor:     payload.Descriptor,
-		Rating:    payload.Rating,
-		CreatedOn: uint64(time.Now().UnixMilli()),
+		ID:         domain.NewID(),
+		Descriptor: payload.Descriptor,
+		Rating:     payload.Rating,
+		CreatedOn:  uint64(time.Now().UnixMilli()),
 	}
 
 	created, err := h.repo.Create(ctx, banana)
@@ -98,8 +98,8 @@ func (h *Handler) update(ctx context.Context, id, body string) (events.APIGatewa
 	}
 
 	var payload struct {
-		Descriptor  string `json:"descriptor"`
-		Rating int    `json:"rating"`
+		Descriptor string `json:"descriptor"`
+		Rating     int    `json:"rating"`
 	}
 	if err := json.Unmarshal([]byte(body), &payload); err != nil {
 		return h.errorResponse(ctx, domain.ErrInvalidJSON, "update banana")
@@ -111,9 +111,9 @@ func (h *Handler) update(ctx context.Context, id, body string) (events.APIGatewa
 	}
 
 	updated, err := h.repo.Update(ctx, Banana{
-		ID:     id,
-		Descriptor:  payload.Descriptor,
-		Rating: payload.Rating,
+		ID:         id,
+		Descriptor: payload.Descriptor,
+		Rating:     payload.Rating,
 	})
 	if err != nil {
 		return h.errorResponse(ctx, err, "update banana")

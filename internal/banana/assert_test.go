@@ -13,7 +13,7 @@ import (
 	"github.com/phides-code/go-multi-api/internal/platform"
 )
 
-func decodeBananaData(t *testing.T, envelope platform.APIResponse) banana.Banana {
+func requireEnvelopeDataJSON(t *testing.T, envelope platform.APIResponse) []byte {
 	t.Helper()
 	if envelope.Error != nil {
 		t.Fatalf("unexpected error: %s", *envelope.Error)
@@ -22,8 +22,13 @@ func decodeBananaData(t *testing.T, envelope platform.APIResponse) banana.Banana
 	if err != nil {
 		t.Fatalf("marshal data: %v", err)
 	}
+	return data
+}
+
+func decodeBananaData(t *testing.T, envelope platform.APIResponse) banana.Banana {
+	t.Helper()
 	var b banana.Banana
-	if err := json.Unmarshal(data, &b); err != nil {
+	if err := json.Unmarshal(requireEnvelopeDataJSON(t, envelope), &b); err != nil {
 		t.Fatalf("unmarshal banana: %v", err)
 	}
 	return b
@@ -31,15 +36,8 @@ func decodeBananaData(t *testing.T, envelope platform.APIResponse) banana.Banana
 
 func decodeBananaListData(t *testing.T, envelope platform.APIResponse) []banana.Banana {
 	t.Helper()
-	if envelope.Error != nil {
-		t.Fatalf("unexpected error: %s", *envelope.Error)
-	}
-	data, err := json.Marshal(envelope.Data)
-	if err != nil {
-		t.Fatalf("marshal data: %v", err)
-	}
 	var items []banana.Banana
-	if err := json.Unmarshal(data, &items); err != nil {
+	if err := json.Unmarshal(requireEnvelopeDataJSON(t, envelope), &items); err != nil {
 		t.Fatalf("unmarshal list: %v", err)
 	}
 	return items
@@ -48,17 +46,13 @@ func decodeBananaListData(t *testing.T, envelope platform.APIResponse) []banana.
 func assertBananaDataKeys(t *testing.T, envelope platform.APIResponse) {
 	t.Helper()
 
-	raw, err := json.Marshal(envelope.Data)
-	if err != nil {
-		t.Fatalf("marshal data: %v", err)
-	}
-
 	var keys map[string]json.RawMessage
-	if err := json.Unmarshal(raw, &keys); err != nil {
+	if err := json.Unmarshal(requireEnvelopeDataJSON(t, envelope), &keys); err != nil {
 		t.Fatalf("unmarshal data keys: %v", err)
 	}
 
-	want := []string{"descriptor", "createdOn", "id", "rating"}
+	// Wire keys must match banana.Banana json tags (intentional contract check).
+	want := []string{"createdOn", "descriptor", "id", "rating"}
 	if len(keys) != len(want) {
 		t.Fatalf("data has %d keys %v, want exactly %v", len(keys), maps.Keys(keys), want)
 	}

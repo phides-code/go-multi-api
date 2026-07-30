@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/phides-code/go-multi-api/internal/domain"
+	"github.com/phides-code/go-multi-api/internal/testutil"
 )
 
 func TestValidateRequiredString(t *testing.T) {
@@ -27,12 +28,7 @@ func TestValidateRequiredString(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			err := domain.ValidateRequiredString(tt.value, domain.DefaultMinStringLength, domain.DefaultMaxStringLength)
-			if tt.wantErr && err == nil {
-				t.Fatal("expected error")
-			}
-			if !tt.wantErr && err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
+			testutil.AssertWantErr(t, err, tt.wantErr)
 		})
 	}
 }
@@ -56,12 +52,7 @@ func TestValidateRequiredInt(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			err := domain.ValidateRequiredInt(tt.value, domain.DefaultMinInt, domain.DefaultMaxInt)
-			if tt.wantErr && err == nil {
-				t.Fatal("expected error")
-			}
-			if !tt.wantErr && err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
+			testutil.AssertWantErr(t, err, tt.wantErr)
 		})
 	}
 }

@@ -21,6 +21,15 @@ func RequireStatusAndEnvelope(t *testing.T, resp events.APIGatewayProxyResponse,
 	return envelope
 }
 
+// RequireHandle fails if Handle returned an error, then asserts status and returns the envelope.
+func RequireHandle(t *testing.T, resp events.APIGatewayProxyResponse, err error, wantStatus int) platform.APIResponse {
+	t.Helper()
+	if err != nil {
+		t.Fatalf("handle: %v", err)
+	}
+	return RequireStatusAndEnvelope(t, resp, wantStatus)
+}
+
 func AssertAPIError(t *testing.T, envelope platform.APIResponse, wantMsg string) {
 	t.Helper()
 	if envelope.Data != nil {

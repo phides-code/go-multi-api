@@ -29,6 +29,14 @@ func NewRepository(client dynamoAPI) Repository {
 	return &dynamoRepository{client: client}
 }
 
+func unmarshalBanana(item map[string]types.AttributeValue) (Banana, error) {
+	var banana Banana
+	if err := attributevalue.UnmarshalMap(item, &banana); err != nil {
+		return Banana{}, fmt.Errorf("unmarshal banana: %w", err)
+	}
+	return banana, nil
+}
+
 func (r *dynamoRepository) Create(ctx context.Context, banana Banana) (Banana, error) {
 	item, err := attributevalue.MarshalMap(banana)
 	if err != nil {
@@ -66,12 +74,7 @@ func (r *dynamoRepository) GetByID(ctx context.Context, id string) (Banana, erro
 		return Banana{}, domain.ErrNotFound
 	}
 
-	var banana Banana
-	if err := attributevalue.UnmarshalMap(out.Item, &banana); err != nil {
-		return Banana{}, fmt.Errorf("unmarshal banana: %w", err)
-	}
-
-	return banana, nil
+	return unmarshalBanana(out.Item)
 }
 
 func (r *dynamoRepository) List(ctx context.Context) ([]Banana, error) {
@@ -92,9 +95,9 @@ func (r *dynamoRepository) List(ctx context.Context) ([]Banana, error) {
 		}
 
 		for _, item := range out.Items {
-			var banana Banana
-			if err := attributevalue.UnmarshalMap(item, &banana); err != nil {
-				return nil, fmt.Errorf("unmarshal banana: %w", err)
+			banana, err := unmarshalBanana(item)
+			if err != nil {
+				return nil, err
 			}
 			items = append(items, banana)
 		}
@@ -134,12 +137,7 @@ func (r *dynamoRepository) Update(ctx context.Context, banana Banana) (Banana, e
 		return Banana{}, fmt.Errorf("update item: %w", err)
 	}
 
-	var updated Banana
-	if err := attributevalue.UnmarshalMap(out.Attributes, &updated); err != nil {
-		return Banana{}, fmt.Errorf("unmarshal banana: %w", err)
-	}
-
-	return updated, nil
+	return unmarshalBanana(out.Attributes)
 }
 
 func (r *dynamoRepository) Delete(ctx context.Context, id string) (Banana, error) {
@@ -157,10 +155,5 @@ func (r *dynamoRepository) Delete(ctx context.Context, id string) (Banana, error
 		return Banana{}, domain.ErrNotFound
 	}
 
-	var deleted Banana
-	if err := attributevalue.UnmarshalMap(out.Attributes, &deleted); err != nil {
-		return Banana{}, fmt.Errorf("unmarshal banana: %w", err)
-	}
-
-	return deleted, nil
+	return unmarshalBanana(out.Attributes)
 }

@@ -15,8 +15,8 @@ func TestValidateCreateInput(t *testing.T) {
 
 	validCreateInput := func() banana.CreateInput {
 		return banana.CreateInput{
-			Descriptor:  testutil.TestBananaDescriptor,
-			Rating: testutil.TestBananaRating,
+			Descriptor: testutil.TestBananaDescriptor,
+			Rating:     testutil.TestBananaRating,
 		}
 	}
 
@@ -58,15 +58,7 @@ func TestValidateCreateInput(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			err := banana.ValidateCreateInput(tt.input)
-
-			if tt.wantErr && err == nil {
-				t.Fatal("expected error")
-			}
-
-			if !tt.wantErr && err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
+			testutil.AssertWantErr(t, banana.ValidateCreateInput(tt.input), tt.wantErr)
 		})
 	}
 }
@@ -78,9 +70,9 @@ func TestValidateUpdateInput(t *testing.T) {
 
 	validUpdateInput := func() banana.UpdateInput {
 		return banana.UpdateInput{
-			ID:     validID,
-			Descriptor:  testutil.TestBananaDescriptor,
-			Rating: testutil.TestBananaRating,
+			ID:         validID,
+			Descriptor: testutil.TestBananaDescriptor,
+			Rating:     testutil.TestBananaRating,
 		}
 	}
 
@@ -131,15 +123,7 @@ func TestValidateUpdateInput(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			err := banana.ValidateUpdateInput(tt.input)
-
-			if tt.wantErr && err == nil {
-				t.Fatal("expected error")
-			}
-
-			if !tt.wantErr && err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
+			testutil.AssertWantErr(t, banana.ValidateUpdateInput(tt.input), tt.wantErr)
 		})
 	}
 }
