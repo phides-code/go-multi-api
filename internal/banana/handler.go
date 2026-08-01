@@ -83,7 +83,10 @@ func (h *Handler) create(ctx context.Context, body string) (events.APIGatewayPro
 		return h.errorResponse(ctx, domain.ErrInvalidJSON, op)
 	}
 
-	input := CreateInput{Descriptor: payload.Descriptor, Rating: payload.Rating}
+	input := CreateInput{
+		Descriptor: payload.Descriptor,
+		Rating:     payload.Rating,
+	}
 	if err := ValidateCreateInput(input); err != nil {
 		return h.errorResponse(ctx, err, op)
 	}
@@ -115,7 +118,11 @@ func (h *Handler) update(ctx context.Context, id, body string) (events.APIGatewa
 		return h.errorResponse(ctx, domain.ErrInvalidJSON, op)
 	}
 
-	input := UpdateInput{ID: id, Descriptor: payload.Descriptor, Rating: payload.Rating}
+	input := UpdateInput{
+		ID:         id,
+		Descriptor: payload.Descriptor,
+		Rating:     payload.Rating,
+	}
 	if err := ValidateUpdateInput(input); err != nil {
 		return h.errorResponse(ctx, err, op)
 	}

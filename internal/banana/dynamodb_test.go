@@ -9,7 +9,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	awsdynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"github.com/google/uuid"
 	"github.com/phides-code/go-multi-api/internal/banana"
 	"github.com/phides-code/go-multi-api/internal/domain"
 	"github.com/phides-code/go-multi-api/internal/testutil"
@@ -180,11 +179,7 @@ func TestBananaRepositoryDelete(t *testing.T) {
 func TestBananaRepositoryUpdate(t *testing.T) {
 	t.Parallel()
 
-	updatedBanana := banana.Banana{ID: uuid.NewString(), Descriptor: "updated", Rating: 75, CreatedOn: 12345}
-	item, err := attributevalue.MarshalMap(updatedBanana)
-	if err != nil {
-		t.Fatal(err)
-	}
+	_, updatedBanana, item := storedBananaFixture(t)
 
 	tests := []struct {
 		name       string
@@ -248,7 +243,10 @@ func TestBananaRepositoryUpdate(t *testing.T) {
 func TestBananaRepositoryCreate(t *testing.T) {
 	t.Parallel()
 
-	want := banana.Banana{ID: uuid.NewString(), Descriptor: "new", Rating: testutil.TestBananaRating, CreatedOn: 12345}
+	_, want := testutil.BananaWithID(
+		testutil.ValidBananaBody(),
+		testutil.TestStoredBananaCreatedOn,
+	)
 	tests := []struct {
 		name       string
 		setupMock  func(t *testing.T) *mockDynamoClient

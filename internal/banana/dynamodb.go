@@ -138,8 +138,10 @@ func (r *dynamoRepository) Update(ctx context.Context, banana Banana) (Banana, e
 		TableName: aws.String(TableName),
 		Key:       idKey(banana.ID),
 		UpdateExpression: aws.String(fmt.Sprintf(
-			"SET #%s = :%s, #%s = :%s",
-			AttrDescriptor, AttrDescriptor, AttrRating, AttrRating,
+			"SET #%s = :%s, "+
+				"#%s = :%s",
+			AttrDescriptor, AttrDescriptor,
+			AttrRating, AttrRating,
 		)),
 		ConditionExpression: aws.String(ConditionIDExists),
 		ExpressionAttributeNames: map[string]string{

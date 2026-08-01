@@ -19,7 +19,7 @@ const TestBananaRating = 50
 const TestStoredBananaCreatedOn uint64 = 12345
 
 const (
-	ListBananaDescriptorFirst  = "cavendish"
+	ListBananaDescriptorFirst  = TestBananaDescriptor
 	ListBananaDescriptorSecond = "plantain"
 	ListBananaDescriptorThird  = "burro"
 
@@ -37,7 +37,10 @@ type BananaBody struct {
 
 // ValidBananaBody returns a BananaBody with canonical valid field values.
 func ValidBananaBody() BananaBody {
-	return BananaBody{Descriptor: TestBananaDescriptor, Rating: TestBananaRating}
+	return BananaBody{
+		Descriptor: TestBananaDescriptor,
+		Rating:     TestBananaRating,
+	}
 }
 
 // JSON marshals the body to a request payload string.
