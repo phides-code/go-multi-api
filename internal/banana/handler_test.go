@@ -78,7 +78,7 @@ func TestBananaHandlerCreate(t *testing.T) {
 			h := banana.NewHandler(tt.setupRepo(), platform.NewLogger())
 
 			resp, err := h.Handle(context.Background(), events.APIGatewayProxyRequest{
-				HTTPMethod: "POST",
+				HTTPMethod: http.MethodPost,
 				Body:       tt.body,
 			})
 			envelope := testutil.RequireHandle(t, resp, err, tt.wantStatus)
@@ -193,7 +193,7 @@ func TestBananaHandlerDelete(t *testing.T) {
 			}
 
 			if tt.pathID != "" {
-				req.PathParameters = map[string]string{"id": tt.pathID}
+				req.PathParameters = map[string]string{banana.AttrID: tt.pathID}
 			}
 
 			resp, err := h.Handle(context.Background(), req)
@@ -295,7 +295,7 @@ func TestBananaHandlerGetByID(t *testing.T) {
 			}
 
 			if tt.pathID != "" {
-				req.PathParameters = map[string]string{"id": tt.pathID}
+				req.PathParameters = map[string]string{banana.AttrID: tt.pathID}
 			}
 
 			resp, err := h.Handle(context.Background(), req)
@@ -331,14 +331,14 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 	}{
 		{
 			name:         "POST invalid json",
-			method:       "POST",
+			method:       http.MethodPost,
 			body:         "{not json",
 			wantStatus:   http.StatusBadRequest,
 			wantErrorMsg: domain.ErrInvalidJSON.Error(),
 		},
 		{
 			name:         "POST empty descriptor",
-			method:       "POST",
+			method:       http.MethodPost,
 			body:         validationBodies.bananaWithEmptyValue,
 			wantStatus:   http.StatusBadRequest,
 			wantErrorMsg: domain.ErrValidationFailed.Error(),
@@ -353,7 +353,7 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 		},
 		{
 			name:         "POST whitespace descriptor",
-			method:       "POST",
+			method:       http.MethodPost,
 			body:         validationBodies.bananaWithWhitespace,
 			wantStatus:   http.StatusBadRequest,
 			wantErrorMsg: domain.ErrValidationFailed.Error(),
@@ -361,7 +361,7 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 		},
 		{
 			name:         "POST descriptor too long",
-			method:       "POST",
+			method:       http.MethodPost,
 			body:         validationBodies.bananaWithValueTooLong,
 			wantStatus:   http.StatusBadRequest,
 			wantErrorMsg: domain.ErrValidationFailed.Error(),
@@ -369,7 +369,7 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 		},
 		{
 			name:         "POST rating below min",
-			method:       "POST",
+			method:       http.MethodPost,
 			body:         validationBodies.bananaWithValueBelowMin,
 			wantStatus:   http.StatusBadRequest,
 			wantErrorMsg: domain.ErrValidationFailed.Error(),
@@ -377,7 +377,7 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 		},
 		{
 			name:         "POST rating above max",
-			method:       "POST",
+			method:       http.MethodPost,
 			body:         validationBodies.bananaWithValueAboveMax,
 			wantStatus:   http.StatusBadRequest,
 			wantErrorMsg: domain.ErrValidationFailed.Error(),
@@ -617,7 +617,7 @@ func TestBananaHandlerUpdate(t *testing.T) {
 			}
 
 			if tt.pathID != "" {
-				req.PathParameters = map[string]string{"id": tt.pathID}
+				req.PathParameters = map[string]string{banana.AttrID: tt.pathID}
 			}
 
 			resp, err := h.Handle(context.Background(), req)

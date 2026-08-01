@@ -30,7 +30,7 @@ func TestGatewayRoutesBananas(t *testing.T) {
 	resp, err := g.Handle(context.Background(), events.APIGatewayProxyRequest{
 		HTTPMethod:     http.MethodGet,
 		Path:           "/" + banana.PathPrefix + "/" + id,
-		PathParameters: map[string]string{"id": id},
+		PathParameters: map[string]string{banana.AttrID: id},
 		Headers:        testutil.CFTokenHeaders(testutil.TestCFTToken),
 	})
 	testutil.RequireHandle(t, resp, err, http.StatusOK)
@@ -45,7 +45,7 @@ func TestGatewaySkipsCFTTokenUnderSAMLocal(t *testing.T) {
 	resp, err := g.Handle(context.Background(), events.APIGatewayProxyRequest{
 		HTTPMethod:     http.MethodGet,
 		Path:           "/" + banana.PathPrefix + "/" + id,
-		PathParameters: map[string]string{"id": id},
+		PathParameters: map[string]string{banana.AttrID: id},
 	})
 	testutil.RequireHandle(t, resp, err, http.StatusOK)
 }

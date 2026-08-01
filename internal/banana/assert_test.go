@@ -52,7 +52,12 @@ func assertBananaDataKeys(t *testing.T, envelope platform.APIResponse) {
 	}
 
 	// Wire keys must match banana.Banana json tags (intentional contract check).
-	want := []string{"createdOn", "descriptor", "id", "rating"}
+	want := []string{
+		banana.AttrCreatedOn,
+		banana.AttrDescriptor,
+		banana.AttrID,
+		banana.AttrRating,
+	}
 	if len(keys) != len(want) {
 		t.Fatalf("data has %d keys %v, want exactly %v", len(keys), maps.Keys(keys), want)
 	}
@@ -66,8 +71,8 @@ func assertBananaDataKeys(t *testing.T, envelope platform.APIResponse) {
 func assertBananaPutItem(t *testing.T, params *awsdynamodb.PutItemInput, want banana.Banana) {
 	t.Helper()
 
-	if params.ConditionExpression == nil || *params.ConditionExpression != "attribute_not_exists(id)" {
-		t.Fatalf("ConditionExpression = %v, want attribute_not_exists(id)", params.ConditionExpression)
+	if params.ConditionExpression == nil || *params.ConditionExpression != banana.ConditionIDNotExists {
+		t.Fatalf("ConditionExpression = %v, want %s", params.ConditionExpression, banana.ConditionIDNotExists)
 	}
 
 	var got banana.Banana

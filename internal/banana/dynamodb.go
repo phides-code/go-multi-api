@@ -13,6 +13,20 @@ import (
 	"github.com/phides-code/go-multi-api/internal/domain"
 )
 
+// DynamoDB attribute names (must stay aligned with Banana dynamodbav / JSON tags).
+const (
+	AttrID         = "id"
+	AttrDescriptor = "descriptor"
+	AttrRating     = "rating"
+	AttrCreatedOn  = "createdOn"
+)
+
+// DynamoDB condition expressions for the id key (create vs update).
+const (
+	ConditionIDNotExists = "attribute_not_exists(" + AttrID + ")"
+	ConditionIDExists    = "attribute_exists(" + AttrID + ")"
+)
+
 type dynamoRepository struct {
 	client dynamoAPI
 }
@@ -27,6 +41,17 @@ type dynamoAPI interface {
 
 func NewRepository(client dynamoAPI) Repository {
 	return &dynamoRepository{client: client}
+}
+
+func idKey(id string) map[string]types.AttributeValue {
+	return map[string]types.AttributeValue{
+		AttrID: &types.AttributeValueMemberS{Value: id},
+	}
+}
+
+func isConditionalCheckFailed(err error) bool {
+	var conditionalCheck *types.ConditionalCheckFailedException
+	return errors.As(err, &conditionalCheck)
 }
 
 func unmarshalBanana(item map[string]types.AttributeValue) (Banana, error) {
@@ -46,12 +71,11 @@ func (r *dynamoRepository) Create(ctx context.Context, banana Banana) (Banana, e
 	_, err = r.client.PutItem(ctx, &dynamodb.PutItemInput{
 		TableName:           aws.String(TableName),
 		Item:                item,
-		ConditionExpression: aws.String("attribute_not_exists(id)"),
+		ConditionExpression: aws.String(ConditionIDNotExists),
 	})
 
 	if err != nil {
-		var conditionalCheck *types.ConditionalCheckFailedException
-		if errors.As(err, &conditionalCheck) {
+		if isConditionalCheckFailed(err) {
 			return Banana{}, domain.ErrAlreadyExists
 		}
 		return Banana{}, fmt.Errorf("put item: %w", err)
@@ -63,9 +87,7 @@ func (r *dynamoRepository) Create(ctx context.Context, banana Banana) (Banana, e
 func (r *dynamoRepository) GetByID(ctx context.Context, id string) (Banana, error) {
 	out, err := r.client.GetItem(ctx, &dynamodb.GetItemInput{
 		TableName: aws.String(TableName),
-		Key: map[string]types.AttributeValue{
-			"id": &types.AttributeValueMemberS{Value: id},
-		},
+		Key:       idKey(id),
 	})
 	if err != nil {
 		return Banana{}, fmt.Errorf("get item: %w", err)
@@ -114,24 +136,24 @@ func (r *dynamoRepository) List(ctx context.Context) ([]Banana, error) {
 func (r *dynamoRepository) Update(ctx context.Context, banana Banana) (Banana, error) {
 	out, err := r.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
 		TableName: aws.String(TableName),
-		Key: map[string]types.AttributeValue{
-			"id": &types.AttributeValueMemberS{Value: banana.ID},
-		},
-		UpdateExpression:    aws.String("SET #descriptor = :descriptor, #rating = :rating"),
-		ConditionExpression: aws.String("attribute_exists(id)"),
+		Key:       idKey(banana.ID),
+		UpdateExpression: aws.String(fmt.Sprintf(
+			"SET #%s = :%s, #%s = :%s",
+			AttrDescriptor, AttrDescriptor, AttrRating, AttrRating,
+		)),
+		ConditionExpression: aws.String(ConditionIDExists),
 		ExpressionAttributeNames: map[string]string{
-			"#descriptor": "descriptor",
-			"#rating":     "rating",
+			"#" + AttrDescriptor: AttrDescriptor,
+			"#" + AttrRating:     AttrRating,
 		},
 		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":descriptor": &types.AttributeValueMemberS{Value: banana.Descriptor},
-			":rating":     &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", banana.Rating)},
+			":" + AttrDescriptor: &types.AttributeValueMemberS{Value: banana.Descriptor},
+			":" + AttrRating:     &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", banana.Rating)},
 		},
 		ReturnValues: types.ReturnValueAllNew,
 	})
 	if err != nil {
-		var conditionalCheck *types.ConditionalCheckFailedException
-		if errors.As(err, &conditionalCheck) {
+		if isConditionalCheckFailed(err) {
 			return Banana{}, domain.ErrNotFound
 		}
 		return Banana{}, fmt.Errorf("update item: %w", err)
@@ -142,10 +164,8 @@ func (r *dynamoRepository) Update(ctx context.Context, banana Banana) (Banana, e
 
 func (r *dynamoRepository) Delete(ctx context.Context, id string) (Banana, error) {
 	out, err := r.client.DeleteItem(ctx, &dynamodb.DeleteItemInput{
-		TableName: aws.String(TableName),
-		Key: map[string]types.AttributeValue{
-			"id": &types.AttributeValueMemberS{Value: id},
-		},
+		TableName:    aws.String(TableName),
+		Key:          idKey(id),
 		ReturnValues: types.ReturnValueAllOld,
 	})
 	if err != nil {

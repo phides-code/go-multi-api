@@ -4,6 +4,7 @@ package banana
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"strings"
 	"time"
 
@@ -22,59 +23,69 @@ func NewHandler(repo Repository, logger *platform.Logger) *Handler {
 }
 
 func (h *Handler) Handle(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	id := strings.TrimSpace(req.PathParameters["id"])
+	const op = "banana request"
+
+	id := strings.TrimSpace(req.PathParameters[AttrID])
 
 	switch req.HTTPMethod {
-	case "GET":
+	case http.MethodGet:
 		if id == "" {
 			return h.list(ctx, req)
 		}
 		return h.getByID(ctx, id)
-	case "POST":
+	case http.MethodPost:
 		return h.create(ctx, req.Body)
-	case "PUT":
+	case http.MethodPut:
 		return h.update(ctx, id, req.Body)
-	case "DELETE":
+	case http.MethodDelete:
 		return h.delete(ctx, id)
 	default:
-		return h.errorResponse(ctx, domain.ErrMethodNotAllowed, "banana request")
+		return h.errorResponse(ctx, domain.ErrMethodNotAllowed, op)
 	}
 }
 
 func (h *Handler) list(ctx context.Context, _ events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	const op = "list bananas"
+
 	items, err := h.repo.List(ctx)
 	if err != nil {
-		return h.errorResponse(ctx, err, "list bananas")
+		return h.errorResponse(ctx, err, op)
 	}
 
-	return platform.SuccessResponse(200, items)
+	return platform.SuccessResponse(http.StatusOK, items)
 }
 
 func (h *Handler) getByID(ctx context.Context, id string) (events.APIGatewayProxyResponse, error) {
+	const op = "get banana"
+
 	if err := domain.ValidateID(id); err != nil {
-		return h.errorResponse(ctx, err, "get banana")
+		return h.errorResponse(ctx, err, op)
 	}
 
 	banana, err := h.repo.GetByID(ctx, id)
 	if err != nil {
-		return h.errorResponse(ctx, err, "get banana")
+		return h.errorResponse(ctx, err, op)
 	}
 
-	return platform.SuccessResponse(200, banana)
+	return platform.SuccessResponse(http.StatusOK, banana)
+}
+
+type writePayload struct {
+	Descriptor string `json:"descriptor"`
+	Rating     int    `json:"rating"`
 }
 
 func (h *Handler) create(ctx context.Context, body string) (events.APIGatewayProxyResponse, error) {
-	var payload struct {
-		Descriptor string `json:"descriptor"`
-		Rating     int    `json:"rating"`
-	}
+	const op = "create banana"
+
+	var payload writePayload
 	if err := json.Unmarshal([]byte(body), &payload); err != nil {
-		return h.errorResponse(ctx, domain.ErrInvalidJSON, "create banana")
+		return h.errorResponse(ctx, domain.ErrInvalidJSON, op)
 	}
 
 	input := CreateInput{Descriptor: payload.Descriptor, Rating: payload.Rating}
 	if err := ValidateCreateInput(input); err != nil {
-		return h.errorResponse(ctx, err, "create banana")
+		return h.errorResponse(ctx, err, op)
 	}
 
 	banana := Banana{
@@ -86,28 +97,27 @@ func (h *Handler) create(ctx context.Context, body string) (events.APIGatewayPro
 
 	created, err := h.repo.Create(ctx, banana)
 	if err != nil {
-		return h.errorResponse(ctx, err, "create banana")
+		return h.errorResponse(ctx, err, op)
 	}
 
-	return platform.SuccessResponse(201, created)
+	return platform.SuccessResponse(http.StatusCreated, created)
 }
 
 func (h *Handler) update(ctx context.Context, id, body string) (events.APIGatewayProxyResponse, error) {
+	const op = "update banana"
+
 	if err := domain.ValidateID(id); err != nil {
-		return h.errorResponse(ctx, err, "update banana")
+		return h.errorResponse(ctx, err, op)
 	}
 
-	var payload struct {
-		Descriptor string `json:"descriptor"`
-		Rating     int    `json:"rating"`
-	}
+	var payload writePayload
 	if err := json.Unmarshal([]byte(body), &payload); err != nil {
-		return h.errorResponse(ctx, domain.ErrInvalidJSON, "update banana")
+		return h.errorResponse(ctx, domain.ErrInvalidJSON, op)
 	}
 
 	input := UpdateInput{ID: id, Descriptor: payload.Descriptor, Rating: payload.Rating}
 	if err := ValidateUpdateInput(input); err != nil {
-		return h.errorResponse(ctx, err, "update banana")
+		return h.errorResponse(ctx, err, op)
 	}
 
 	updated, err := h.repo.Update(ctx, Banana{
@@ -116,23 +126,25 @@ func (h *Handler) update(ctx context.Context, id, body string) (events.APIGatewa
 		Rating:     payload.Rating,
 	})
 	if err != nil {
-		return h.errorResponse(ctx, err, "update banana")
+		return h.errorResponse(ctx, err, op)
 	}
 
-	return platform.SuccessResponse(200, updated)
+	return platform.SuccessResponse(http.StatusOK, updated)
 }
 
 func (h *Handler) delete(ctx context.Context, id string) (events.APIGatewayProxyResponse, error) {
+	const op = "delete banana"
+
 	if err := domain.ValidateID(id); err != nil {
-		return h.errorResponse(ctx, err, "delete banana")
+		return h.errorResponse(ctx, err, op)
 	}
 
 	deleted, err := h.repo.Delete(ctx, id)
 	if err != nil {
-		return h.errorResponse(ctx, err, "delete banana")
+		return h.errorResponse(ctx, err, op)
 	}
 
-	return platform.SuccessResponse(200, deleted)
+	return platform.SuccessResponse(http.StatusOK, deleted)
 }
 
 func (h *Handler) errorResponse(ctx context.Context, err error, operation string) (events.APIGatewayProxyResponse, error) {

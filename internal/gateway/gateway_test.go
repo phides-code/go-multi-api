@@ -14,10 +14,28 @@ import (
 	"github.com/phides-code/go-multi-api/internal/testutil"
 )
 
+// Stub resource used only inside this package (not a real app resource).
+const (
+	stubPrefix = "apples"
+	stubPath   = "/" + stubPrefix
+)
+
 type stubResourceHandler struct{}
 
 func (stubResourceHandler) Handle(_ context.Context, _ events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	return platform.SuccessResponse(http.StatusOK, map[string]bool{"routed": true})
+}
+
+func newTestGateway() *gateway.Gateway {
+	return gateway.NewGatewayWithCFTToken(platform.NewLogger(), testutil.TestCFTToken)
+}
+
+func getRequest(path string, headers map[string]string) events.APIGatewayProxyRequest {
+	return events.APIGatewayProxyRequest{
+		HTTPMethod: http.MethodGet,
+		Path:       path,
+		Headers:    headers,
+	}
 }
 
 func assertEnvelopeShape(t *testing.T, body string) {
@@ -41,61 +59,38 @@ func assertEnvelopeShape(t *testing.T, body string) {
 func TestGatewayUnknownResource(t *testing.T) {
 	t.Parallel()
 
-	g := gateway.NewGatewayWithCFTToken(platform.NewLogger(), testutil.TestCFTToken)
-	resp, err := g.Handle(context.Background(), events.APIGatewayProxyRequest{
-		HTTPMethod: http.MethodGet,
-		Path:       "/apples",
-		Headers:    testutil.CFTokenHeaders(testutil.TestCFTToken),
-	})
+	resp, err := newTestGateway().Handle(context.Background(), getRequest(stubPath, testutil.CFTokenHeaders(testutil.TestCFTToken)))
 	testutil.RequireHandle(t, resp, err, http.StatusNotFound)
 }
 
 func TestGatewayEmptyPath(t *testing.T) {
 	t.Parallel()
 
-	g := gateway.NewGatewayWithCFTToken(platform.NewLogger(), testutil.TestCFTToken)
-	resp, err := g.Handle(context.Background(), events.APIGatewayProxyRequest{
-		HTTPMethod: http.MethodGet,
-		Path:       "/",
-		Headers:    testutil.CFTokenHeaders(testutil.TestCFTToken),
-	})
+	resp, err := newTestGateway().Handle(context.Background(), getRequest("/", testutil.CFTokenHeaders(testutil.TestCFTToken)))
 	testutil.RequireHandle(t, resp, err, http.StatusNotFound)
 }
 
 func TestGatewayRejectsMissingCFTToken(t *testing.T) {
 	t.Parallel()
 
-	g := gateway.NewGatewayWithCFTToken(platform.NewLogger(), testutil.TestCFTToken)
-	resp, err := g.Handle(context.Background(), events.APIGatewayProxyRequest{
-		HTTPMethod: http.MethodGet,
-		Path:       "/bananas",
-	})
+	resp, err := newTestGateway().Handle(context.Background(), getRequest(stubPath, nil))
 	testutil.RequireHandle(t, resp, err, http.StatusUnauthorized)
 }
 
 func TestGatewayRejectsInvalidCFTToken(t *testing.T) {
 	t.Parallel()
 
-	g := gateway.NewGatewayWithCFTToken(platform.NewLogger(), testutil.TestCFTToken)
-	resp, err := g.Handle(context.Background(), events.APIGatewayProxyRequest{
-		HTTPMethod: http.MethodGet,
-		Path:       "/bananas",
-		Headers:    testutil.CFTokenHeaders("wrong"),
-	})
+	resp, err := newTestGateway().Handle(context.Background(), getRequest(stubPath, testutil.CFTokenHeaders("wrong")))
 	testutil.RequireHandle(t, resp, err, http.StatusUnauthorized)
 }
 
 func TestGatewayRoutesRegisteredPrefix(t *testing.T) {
 	t.Parallel()
 
-	g := gateway.NewGatewayWithCFTToken(platform.NewLogger(), testutil.TestCFTToken)
-	g.Register("apples", stubResourceHandler{})
+	g := newTestGateway()
+	g.Register(stubPrefix, stubResourceHandler{})
 
-	resp, err := g.Handle(context.Background(), events.APIGatewayProxyRequest{
-		HTTPMethod: http.MethodGet,
-		Path:       "/apples",
-		Headers:    testutil.CFTokenHeaders(testutil.TestCFTToken),
-	})
+	resp, err := g.Handle(context.Background(), getRequest(stubPath, testutil.CFTokenHeaders(testutil.TestCFTToken)))
 	envelope := testutil.RequireHandle(t, resp, err, http.StatusOK)
 	if envelope.Error != nil {
 		t.Fatalf("unexpected error: %v", envelope.Error)
@@ -116,14 +111,10 @@ func TestGatewayResponseEnvelopeShape(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 
-		g := gateway.NewGatewayWithCFTToken(platform.NewLogger(), testutil.TestCFTToken)
-		g.Register("apples", stubResourceHandler{})
+		g := newTestGateway()
+		g.Register(stubPrefix, stubResourceHandler{})
 
-		resp, err := g.Handle(context.Background(), events.APIGatewayProxyRequest{
-			HTTPMethod: http.MethodGet,
-			Path:       "/apples",
-			Headers:    testutil.CFTokenHeaders(testutil.TestCFTToken),
-		})
+		resp, err := g.Handle(context.Background(), getRequest(stubPath, testutil.CFTokenHeaders(testutil.TestCFTToken)))
 		testutil.RequireHandle(t, resp, err, http.StatusOK)
 		assertEnvelopeShape(t, resp.Body)
 	})
@@ -131,13 +122,7 @@ func TestGatewayResponseEnvelopeShape(t *testing.T) {
 	t.Run("error", func(t *testing.T) {
 		t.Parallel()
 
-		g := gateway.NewGatewayWithCFTToken(platform.NewLogger(), testutil.TestCFTToken)
-
-		resp, err := g.Handle(context.Background(), events.APIGatewayProxyRequest{
-			HTTPMethod: http.MethodGet,
-			Path:       "/apples",
-			Headers:    testutil.CFTokenHeaders(testutil.TestCFTToken),
-		})
+		resp, err := newTestGateway().Handle(context.Background(), getRequest(stubPath, testutil.CFTokenHeaders(testutil.TestCFTToken)))
 		testutil.RequireHandle(t, resp, err, http.StatusNotFound)
 		assertEnvelopeShape(t, resp.Body)
 	})

@@ -198,8 +198,8 @@ func TestBananaRepositoryUpdate(t *testing.T) {
 				return &mockDynamoClient{
 					updateItemFn: func(_ context.Context, params *awsdynamodb.UpdateItemInput, _ ...func(*awsdynamodb.Options)) (*awsdynamodb.UpdateItemOutput, error) {
 						testutil.AssertUpdateSets(t, params, map[string]any{
-							"descriptor":  updatedBanana.Descriptor,
-							"rating": updatedBanana.Rating,
+							banana.AttrDescriptor: updatedBanana.Descriptor,
+							banana.AttrRating:     updatedBanana.Rating,
 						})
 						return &awsdynamodb.UpdateItemOutput{Attributes: item}, nil
 					},
@@ -361,7 +361,7 @@ func TestBananaRepositoryList(t *testing.T) {
 							return &awsdynamodb.ScanOutput{
 								Items: scanOutputItems,
 								LastEvaluatedKey: map[string]types.AttributeValue{
-									"id": &types.AttributeValueMemberS{Value: b2.ID},
+									banana.AttrID: &types.AttributeValueMemberS{Value: b2.ID},
 								},
 							}, nil
 						case 2:
