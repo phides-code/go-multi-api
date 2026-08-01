@@ -1,4 +1,4 @@
-// Banana-specific test helpers for HTTP wire shape and DynamoDB repository assertions.
+// Banana-specific asserts for HTTP response wire shape and DynamoDB repository mocks.
 package banana_test
 
 import (
@@ -51,7 +51,8 @@ func assertBananaDataKeys(t *testing.T, envelope platform.APIResponse) {
 		t.Fatalf("unmarshal data keys: %v", err)
 	}
 
-	// Wire keys must match banana.Banana json tags (intentional contract check).
+	// Expected JSON keys for a banana item (Attr* must stay aligned with Banana tags).
+	// Keep this list alphabetical so missing/extra keys are easy to spot.
 	want := []string{
 		banana.AttrCreatedOn,
 		banana.AttrDescriptor,

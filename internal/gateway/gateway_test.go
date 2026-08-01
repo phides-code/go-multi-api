@@ -14,7 +14,7 @@ import (
 	"github.com/phides-code/go-multi-api/internal/testutil"
 )
 
-// Stub resource used only inside this package (not a real app resource).
+// Stub resource prefix/path used only by gateway unit tests (not an app resource).
 const (
 	stubPrefix = "apples"
 	stubPath   = "/" + stubPrefix

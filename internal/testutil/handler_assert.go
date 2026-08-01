@@ -1,4 +1,4 @@
-// Shared handler test helpers for any resource (envelope parsing and API errors).
+// Shared helpers for handler tests: status, envelope parse, and API error asserts.
 package testutil
 
 import (

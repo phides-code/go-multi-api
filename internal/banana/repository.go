@@ -1,4 +1,4 @@
-// Repository interface; DynamoDB implementation is in dynamodb.go.
+// Repository interface for banana persistence. DynamoDB implements this in dynamodb.go.
 package banana
 
 import "context"

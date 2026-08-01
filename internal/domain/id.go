@@ -1,4 +1,4 @@
-// UUID validation for path parameters and UUID v4 generation for new resources.
+// UUID rules for path `{id}` and generation of new resource IDs.
 package domain
 
 import "github.com/google/uuid"

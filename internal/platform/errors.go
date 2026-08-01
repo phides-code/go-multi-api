@@ -1,4 +1,4 @@
-// Maps domain errors to HTTP status codes and client-facing error messages.
+// Maps domain sentinel errors to HTTP status codes and client-facing messages.
 package platform
 
 import (

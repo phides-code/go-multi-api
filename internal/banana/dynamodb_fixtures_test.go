@@ -1,4 +1,4 @@
-// DynamoDB test fixture: persisted banana row plus marshaled item for Get/Delete mocks.
+// DynamoDB fixture: a persisted banana plus its marshaled AttributeValue map.
 package banana_test
 
 import (

@@ -3,7 +3,7 @@ package testutil
 
 import "testing"
 
-// AssertWantErr fails when err presence does not match wantErr.
+// AssertWantErr fails when whether err is nil does not match wantErr.
 func AssertWantErr(t *testing.T, err error, wantErr bool) {
 	t.Helper()
 	if wantErr && err == nil {

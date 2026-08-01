@@ -1,4 +1,4 @@
-// Cross-package test constants and small shared helpers.
+// Cross-package test constants and small auth-header helpers.
 package testutil
 
 import "github.com/phides-code/go-multi-api/internal/platform"

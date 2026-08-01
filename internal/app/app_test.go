@@ -1,4 +1,4 @@
-// Composition smoke tests: verify the built gateway handles resource routes without panicking.
+// Composition smoke tests: built gateway serves registered routes without panicking.
 package app
 
 import (

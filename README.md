@@ -1,39 +1,48 @@
 # go-multi-api
 
-A single AWS Lambda serving a JSON HTTP API backed by DynamoDB. Each URL path maps to one table and one resource type (`/bananas` today). Add resources by registering handlers on the same Lambda.
-
-## How it works
+An AWS Lambda serving a JSON HTTP API backed by DynamoDB. Each URL path maps to one table and one resource type (`/bananas` is the example implementation). Add resources by registering handlers on the same Lambda.
 
 ```
-API Gateway  →  Lambda (router)  →  resource handler  →  repository  →  DynamoDB
+API Gateway → Lambda (gateway) → resource handler → repository → DynamoDB
 ```
 
-The router checks auth, routes by first path segment, and delegates. Each resource is a vertical slice under `internal/<resource>/`. Shared cross-cutting rules live in `internal/domain`; HTTP envelope and auth in `internal/platform`.
+The gateway authenticates, routes on the first path segment, and delegates. Each resource owns its entity, validation, HTTP handler, and DynamoDB code under `internal/<resource>/`. Cross-cutting rules live in `domain` and `platform`.
+
+## Quick links
+
+| I want to…                          | Go here                                      |
+| ----------------------------------- | -------------------------------------------- |
+| Run tests / local API               | [Development](#development)                  |
+| Understand `/bananas`               | [Bananas](#bananas-bananas)                  |
+| Add a field to an existing resource | [Adding a field](#adding-a-field)            |
+| Add a new table / URL prefix        | [docs/new-resource.md](docs/new-resource.md) |
 
 ## Project layout
 
 ```
-cmd/lambda/main.go          entrypoint → app.Build
+cmd/lambda/main.go       Lambda entry → app.Build
 internal/
-  domain/                   cross-cutting: errors, id, validation
-  gateway/                  auth gate + path routing; Register(prefix, ResourceHandler)
-  banana/                   vertical slice: entity, repository, handler, dynamodb
-  platform/                 response envelope, errors, logging, auth (CFTTokenHeader, CFTTokenEnvVar)
-  app/app.go                composition root: shared DynamoDB client, repos, Register
-  app/banana_stub_test.go   no-op banana.Repository for composition smoke tests
-  app/app_test.go           testGateway + assertWiringSmokeGET
-  testutil/                 shared test helpers (TestCFTToken, CFTokenHeaders, RequireHandle, AssertWantErr, fixtures)
-template.yml                SAM: API Gateway, Lambda, tables
-Makefile                    build, test, local, deploy
+  app/                   Composition root (wire repos + Register)
+  banana/                Reference vertical slice (copy this)
+  domain/                Shared errors, UUID rules, string/int validation
+  gateway/               Auth gate + first-segment routing
+  platform/              Response envelope, error mapping, logging, CF token
+  testutil/              Shared test helpers and banana fixtures
+template.yml             SAM: API, Lambda, tables
+Makefile                 test, build, local, deploy
 ```
 
-Copy `internal/banana/` for new resources. Reuse `domain.ValidateRequiredString` / `ValidateRequiredInt` and `domain.ValidateID`; wire resource-specific validation in `<resource>.go`. Composition stubs live under `internal/app/` (`*_stub_test.go`), not in the resource package — Go test packages are not importable by `app` tests.
+**Dependency direction:** `app.Build` → `gateway` → handler → repository → DynamoDB. Handlers never call DynamoDB directly. Resources do not import each other.
+
+Copy `internal/banana/` for a new resource. Keep composition stubs in `internal/app/*_stub_test.go` (Go cannot import another package’s tests).
 
 ## API contract
 
 ### Authentication
 
-Every request except `OPTIONS` requires `X-CF-Token: <token>` (header `platform.CFTTokenHeader`). Deploy param `AwsCfToken` maps to env `AWS_CF_TOKEN` (`platform.CFTTokenEnvVar`). Under `sam local` (`platform.SAMLocalEnvVar` = `true`/`1`), the token check is skipped.
+Every request except `OPTIONS` needs header `X-CF-Token` (`platform.CFTTokenHeader`). SAM parameter `AwsCfToken` maps to env `AWS_CF_TOKEN` (`platform.CFTTokenEnvVar`).
+
+Under `sam local` (`AWS_SAM_LOCAL` = `true` or `1`), the token check is skipped.
 
 ### Response envelope
 
@@ -41,34 +50,32 @@ Every request except `OPTIONS` requires `X-CF-Token: <token>` (header `platform.
 { "data": { ... } | [ ... ] | null, "error": "message" | null }
 ```
 
-Success: `data` set, `error` null. Failure: opposite.
+Success sets `data` and leaves `error` null. Failure does the opposite.
 
-**Standard client errors** (`internal/platform/errors.go`):
+| HTTP | `error`                 | Domain sentinel       | When                         |
+| ---- | ----------------------- | --------------------- | ---------------------------- |
+| 400  | `invalid json`          | `ErrInvalidJSON`      | Body is not JSON             |
+| 400  | `invalid id`            | `ErrInvalidID`        | Path `{id}` is not a UUID    |
+| 400  | `validation failed`     | `ErrValidationFailed` | Domain rule failed           |
+| 401  | `unauthorized`          | `ErrUnauthorized`     | Missing/wrong token          |
+| 404  | `not found`             | `ErrNotFound`         | Missing item / unknown route |
+| 405  | `method not allowed`    | `ErrMethodNotAllowed` | Unsupported method           |
+| 409  | `already exists`        | `ErrAlreadyExists`    | Duplicate create             |
+| 500  | `internal server error` | —                     | Unexpected failure           |
 
-| HTTP | `error`                 | Domain sentinel       | Cause                |
-| ---- | ----------------------- | --------------------- | -------------------- |
-| 400  | `invalid json`          | `ErrInvalidJSON`      | Bad body             |
-| 400  | `invalid id`            | `ErrInvalidID`        | Path `{id}` not UUID |
-| 400  | `validation failed`     | `ErrValidationFailed` | Domain rule failed   |
-| 401  | `unauthorized`          | `ErrUnauthorized`     | Bad/missing token    |
-| 404  | `not found`             | `ErrNotFound`         | Missing item         |
-| 405  | `method not allowed`    | `ErrMethodNotAllowed` | Unsupported method   |
-| 409  | `already exists`        | `ErrAlreadyExists`    | Duplicate create     |
-| 500  | `internal server error` | —                     | Unexpected failure   |
-
-Return `ErrValidationFailed` from validation; no per-field error strings unless you extend platform mapping and this table. Client-facing text comes from each sentinel's `Error()` in `domain/errors.go` via `platform.ClientErrorMessage`. New cross-cutting errors: add sentinel in `domain/errors.go`, add a row to `clientErrorMappings` in `platform/errors.go`, document here.
+Client-facing text is the sentinel’s `Error()` string (`domain/errors.go`), mapped in `platform/errors.go`. Prefer `ErrValidationFailed` for field rules; add a new sentinel only when you need a new HTTP status or message for every resource.
 
 ### Bananas (`/bananas`)
 
-| Method   | Path            | Behavior                                      |
-| -------- | --------------- | --------------------------------------------- |
-| `GET`    | `/bananas`      | List all                                      |
-| `GET`    | `/bananas/{id}` | Get by UUID                                   |
-| `POST`   | `/bananas`      | Create; server sets `id`, `createdOn`         |
-| `PUT`    | `/bananas/{id}` | Update `descriptor`, `rating`; 404 if missing |
-| `DELETE` | `/bananas/{id}` | Hard delete; returns deleted item             |
+| Method   | Path            | Behavior                                    |
+| -------- | --------------- | ------------------------------------------- |
+| `GET`    | `/bananas`      | List all                                    |
+| `GET`    | `/bananas/{id}` | Get by UUID                                 |
+| `POST`   | `/bananas`      | Create (`id` and `createdOn` set by server) |
+| `PUT`    | `/bananas/{id}` | Update `descriptor` and `rating`            |
+| `DELETE` | `/bananas/{id}` | Hard delete; returns the deleted item       |
 
-**Item shape** (single banana in create/get/update/delete responses; list returns an array of the same shape):
+**Item** (list returns an array of the same shape):
 
 ```json
 {
@@ -79,66 +86,57 @@ Return `ErrValidationFailed` from validation; no per-field error strings unless 
 }
 ```
 
-**Create body** (POST): `{ "descriptor": "string", "rating": 0 }`
+**Create / update body:** `{ "descriptor": "string", "rating": 0 }`
 
-**Update body** (PUT): `{ "descriptor": "string", "rating": 0 }`
+**Validation**
 
-**List** (`GET /bananas`): `data` is an array of item shape. The repository scans the full table (DynamoDB pagination is handled internally, not exposed over HTTP).
+- `descriptor`: required, 1–100 Unicode characters (`domain.DefaultMinStringLength`–`DefaultMaxStringLength`)
+- `rating`: required integer 0–100 (`domain.DefaultMinInt`–`DefaultMaxInt`)
+- Path `{id}`: UUID, or 400 `invalid id`
 
-**Validation:** `descriptor` required on create/update, 1–100 Unicode characters (`domain.DefaultMinStringLength`–`DefaultMaxStringLength`). `rating` required on create/update, integer 0–100 (`domain.DefaultMinInt`–`DefaultMaxInt`). Failures → 400 `validation failed`. Path `{id}` must be UUID → 400 `invalid id`.
+List scans the full table. DynamoDB pagination stays inside the repository; it is not exposed over HTTP.
 
 ## Development
 
-Go 1.23+, [AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html).
+Requires Go 1.23+ and [AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html).
 
 ```bash
-make test      # unit tests + coverage gate (69% total excl. testutil, 85% gateway, 85% banana)
+make test      # unit tests + coverage gates (see Makefile)
 make build
-make local     # API on :8000 (Docker); no auth header needed
+make local     # API on :8000; no auth header required
 ```
 
 ```bash
 curl http://localhost:8000/bananas
 ```
 
-**Deploy:** `make init` (first time), then `export AWS_CF_TOKEN=… && make deploy`. CI (`.github/workflows/go.yml`) tests, builds, deploys on push to `main`.
+**Deploy:** `make init` once, then `export AWS_CF_TOKEN=… && make deploy`. CI (`.github/workflows/go.yml`) tests, builds, and deploys on push to `main`.
 
 ## Adding a field
 
-Extend an existing resource (e.g. add `origin` to `Banana`). **TDD:** failing test → minimum code → green. Validation first, HTTP second, persistence last — all within `internal/<resource>/`.
+Example: add `origin` to banana. Stay inside `internal/<resource>/` (plus shared fixtures / README). Prefer TDD: failing test → smallest fix → green.
 
-| Step | What                                                                                                                                                                                                                                                                                        | Files                                                                                                                |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| 1    | **Validation tests** — local `validCreateInput` / `validUpdateInput` helpers inside each test; add a wiring row that blanks the new field (or otherwise breaks it). `domain/validation_test.go` already covers generic string/int rules.                                                    | `internal/<resource>/<resource>_test.go`                                                                             |
-| 2    | **Struct + validation** — field on entity + `json`/`dynamodbav` tags; add to create/update inputs if client-set; wire `domain.ValidateRequiredString`, `domain.ValidateRequiredInt`, or custom rules. Server-owned fields: set in handler/dynamodb, not inputs.                             | `internal/<resource>/<resource>.go`                                                                                  |
-| 3    | **Handler tests** — client-error rows (400 `validation failed`; use `panic<Resource>Repo`); success + `assert<Resource>DataKeys` if wire shape changes. Extend `testutil.<Resource>Body` / `Valid<Resource>Body` and package validation-body fixtures when the create/update payload grows. | `internal/<resource>/handler_test.go`, `mocks_test.go`, `assert_test.go`, `internal/testutil/<resource>_fixtures.go` |
-| 4    | **Handler** — parse JSON, validate, call repo.                                                                                                                                                                                                                                              | `internal/<resource>/handler.go`                                                                                     |
-| 5    | **DynamoDB test** (if PUT-updatable) — `setupMock(t)`; `assert<Resource>RepoResult`; create: `assert<Resource>PutItem`; update: `testutil.AssertUpdateSets` (copy from `internal/banana/assert_test.go`).                                                                                   | `internal/<resource>/dynamodb_test.go`, `assert_test.go`                                                             |
-| 6    | **DynamoDB impl** — add field to SET expression (alphabetical). Usually no `template.yml` change.                                                                                                                                                                                           | `internal/<resource>/dynamodb.go`                                                                                    |
-| 7    | **Docs** — update item/create/update sections above.                                                                                                                                                                                                                                        | this file                                                                                                            |
+1. **Validation test** — In `<resource>_test.go`, extend the local `validCreateInput` / `validUpdateInput` helpers and add a case that blanks (or otherwise breaks) the new field.
+2. **Entity + validation** — Add the field to the entity (`json` + `dynamodbav` tags). If clients set it, add it to create/update inputs and validate with `domain.ValidateRequiredString` / `ValidateRequiredInt` (or a custom rule). Server-owned fields are set in the handler, not in inputs.
+3. **Fixtures** — Extend `testutil.<Resource>Body` / `Valid<Resource>Body`, package validation bodies, and wire-key asserts (`assert<Resource>DataKeys` uses `Attr*` constants).
+4. **Handler tests** — Client-error rows for bad values; success paths that assert the new field when it appears in the response.
+5. **Handler** — Parse, validate, pass through to the repository.
+6. **DynamoDB** — If the field is updatable, extend the Update `SET` expression (keep attribute names alphabetical) and the update test’s `AssertUpdateSets` map. Create usually needs no expression change (full `PutItem`).
+7. **Docs** — Update the resource section in this README.
 
-Skip 5–6 for read-only or create-only fields. Optional unvalidated fields: handler round-trip test on create/get.
+Skip steps 6 for read-only or create-only fields. Run `make test` before opening a PR.
 
-`make test` before PR.
+## Adding a new resource
 
-## Adding a new table
+Copy `internal/banana/` and follow the checklist: **[docs/new-resource.md](docs/new-resource.md)**.
 
-Each table gets its own package under `internal/<resource>/`. Implement only the HTTP methods you need (handler **and** `template.yml`). Checklist: **[docs/new-resource.md](docs/new-resource.md)**.
+Short version:
 
-**TDD:** one vertical slice first (e.g. `GET /apples` → empty list), then expand method by method.
+1. Copy the package; rename symbols (`PathPrefix`, `TableName`, types, tests).
+2. Implement only the HTTP methods you need (handler **and** matching `template.yml` events).
+3. Wire `NewRepository` + `Register` in `app.Build` (reuse the shared DynamoDB client).
+4. Add `internal/app/<resource>_stub_test.go` and a smoke path in `app_test.go`.
+5. Add the SAM table, one `DynamoDBCrudPolicy` per table, and API events.
+6. Document the resource in this README.
 
-| Step | What                                                                                         | Files                                                           |
-| ---- | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| 1    | Copy `internal/banana/` → `internal/<resource>/`; failing handler + router integration tests | `internal/<resource>/handler_test.go`, `router_test.go`         |
-| 2    | Entity, validation, repository interface                                                     | `internal/<resource>/<resource>.go`, `repository.go`            |
-| 3    | HTTP handler (+ tests per method, client errors, one 500 per op)                             | `internal/<resource>/handler.go`                                |
-| 4    | DynamoDB tests then impl                                                                     | `internal/<resource>/dynamodb_test.go`, `dynamodb.go`           |
-| 5    | Compose: shared client, `NewRepository(client)`, `Register`; stub + smoke test               | `internal/app/app.go`, `<resource>_stub_test.go`, `app_test.go` |
-| 6    | SAM table, `DynamoDBCrudPolicy` per table, API events                                        | `template.yml`                                                  |
-| 7    | API docs                                                                                     | this file                                                       |
-
-Reference: `internal/banana/`. Errors: use `domain.ErrValidationFailed` unless adding a new cross-cutting sentinel (see standard errors table).
-
-**Second table:** copy the banana package, register in `app/app.go` (reuse the shared DynamoDB client), add `*_stub_test.go`, extend `testGateway` / smoke path, extend `template.yml`. Details: [docs/new-resource.md](docs/new-resource.md#second-table-in-the-same-project).
-
-`make test` before PR.
+Use `domain.ErrValidationFailed` unless you are introducing a new cross-cutting sentinel (see the errors table above).

@@ -1,4 +1,4 @@
-// Shared banana test fixtures for handler and DynamoDB tests.
+// Shared banana fixtures used by handler and DynamoDB tests outside package banana.
 package testutil
 
 import (
@@ -28,8 +28,8 @@ const (
 	ListBananaRatingThird  = 30
 )
 
-// BananaBody is the create/update request payload for banana HTTP tests.
-// Declared independently of banana.Banana so tag regressions surface as test failures.
+// BananaBody is the create/update JSON payload for banana HTTP tests.
+// Kept separate from banana.Banana so json-tag drift fails tests instead of silently matching.
 type BananaBody struct {
 	Descriptor string `json:"descriptor"`
 	Rating     int    `json:"rating"`
@@ -53,8 +53,7 @@ func (b BananaBody) JSON(t *testing.T) string {
 	return string(data)
 }
 
-// BananaWithID returns a banana whose ID matches the returned id string.
-// Pass a BananaBody (or ValidBananaBody()) so client fields stay named.
+// BananaWithID builds a banana from a request body and fixed createdOn; returns the same id.
 func BananaWithID(body BananaBody, createdOn uint64) (id string, b banana.Banana) {
 	id = uuid.NewString()
 	b = banana.Banana{
@@ -66,8 +65,8 @@ func BananaWithID(body BananaBody, createdOn uint64) (id string, b banana.Banana
 	return
 }
 
-// ListBananas returns three list items for repository list tests.
-// When withTimestamps is true, CreatedOn is set to 1, 2, and 3 respectively.
+// ListBananas returns three distinct list fixtures.
+// When withTimestamps is true, CreatedOn is 1, 2, and 3.
 func ListBananas(withTimestamps bool) (first, second, third banana.Banana) {
 	first = banana.Banana{
 		ID:         uuid.NewString(),

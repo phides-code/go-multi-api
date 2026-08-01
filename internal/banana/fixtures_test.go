@@ -1,4 +1,4 @@
-// Package-local banana fixtures for handler tests (ID-linked entity and request bodies).
+// Package-local fixtures for banana handler tests (existing item + invalid request bodies).
 package banana_test
 
 import (
@@ -10,9 +10,9 @@ import (
 	"github.com/phides-code/go-multi-api/internal/testutil"
 )
 
-// bananaValidationBodies holds invalid request JSON for client-error tests.
-// Field names are intentional: they describe the invalidation shape, not which
-// entity field was mutated (so find-replace and new fields stay simple).
+// bananaValidationBodies holds invalid create/update JSON for handler client-error tests.
+// Names describe the invalidation shape (empty, whitespace, too long, …), not which
+// entity field was mutated — keeps find-replace and new fields simple.
 type bananaValidationBodies struct {
 	bananaWithEmptyValue    string
 	bananaWithWhitespace    string
@@ -48,7 +48,7 @@ func newBananaValidationBodies(t *testing.T) bananaValidationBodies {
 	}
 }
 
-// existingBananaFixture returns an ID-linked banana and matching PUT body for get/update/delete tests.
+// existingBananaFixture returns a UUID, matching banana entity, and valid PUT JSON body.
 func existingBananaFixture(t *testing.T) (id string, b banana.Banana, updateBody string) {
 	t.Helper()
 	id, b = testutil.BananaWithID(testutil.ValidBananaBody(), 0)

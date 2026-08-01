@@ -13,7 +13,7 @@ import (
 	"github.com/phides-code/go-multi-api/internal/domain"
 )
 
-// DynamoDB attribute names (must stay aligned with Banana dynamodbav / JSON tags).
+// DynamoDB attribute names. Keep aligned with Banana json / dynamodbav tags.
 const (
 	AttrID         = "id"
 	AttrDescriptor = "descriptor"
@@ -21,7 +21,7 @@ const (
 	AttrCreatedOn  = "createdOn"
 )
 
-// DynamoDB condition expressions for the id key (create vs update).
+// Condition expressions on the partition key: create requires absence, update requires presence.
 const (
 	ConditionIDNotExists = "attribute_not_exists(" + AttrID + ")"
 	ConditionIDExists    = "attribute_exists(" + AttrID + ")"

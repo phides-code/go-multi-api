@@ -1,4 +1,4 @@
-// Banana mock repository helpers for handler and router tests.
+// Mock Repository helpers for banana handler and router tests.
 package banana_test
 
 import (
@@ -57,7 +57,7 @@ func emptyBananaRepo() *mockBananaRepository {
 	}
 }
 
-// dispatchBananaRepo returns a permissive mock for router dispatch tests (GET by id succeeds).
+// dispatchBananaRepo is a permissive mock for router tests (GET by id succeeds).
 func dispatchBananaRepo() *mockBananaRepository {
 	return &mockBananaRepository{
 		getFn: func(_ context.Context, gotID string) (banana.Banana, error) {
