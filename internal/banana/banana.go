@@ -3,7 +3,7 @@ package banana
 
 import "github.com/phides-code/go-multi-api/internal/domain"
 
-// PathPrefix is the first URL segment registered on the gateway (e.g. /bananas).
+// PathPrefix is the first URL path segment registered on the gateway (no leading slash).
 const PathPrefix = "bananas"
 
 // TableName is the DynamoDB table physical name (must match template.yml).

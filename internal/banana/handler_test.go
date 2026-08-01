@@ -81,11 +81,7 @@ func TestBananaHandlerCreate(t *testing.T) {
 				HTTPMethod: "POST",
 				Body:       tt.body,
 			})
-			if err != nil {
-				t.Fatalf("handle: %v", err)
-			}
-
-			envelope := testutil.RequireStatusAndEnvelope(t, resp, tt.wantStatus)
+			envelope := testutil.RequireHandle(t, resp, err, tt.wantStatus)
 
 			if tt.wantErrorMsg != "" {
 				testutil.AssertAPIError(t, envelope, tt.wantErrorMsg)
@@ -201,11 +197,7 @@ func TestBananaHandlerDelete(t *testing.T) {
 			}
 
 			resp, err := h.Handle(context.Background(), req)
-			if err != nil {
-				t.Fatalf("handle: %v", err)
-			}
-
-			envelope := testutil.RequireStatusAndEnvelope(t, resp, tt.wantStatus)
+			envelope := testutil.RequireHandle(t, resp, err, tt.wantStatus)
 
 			if tt.wantErrorMsg != "" {
 				testutil.AssertAPIError(t, envelope, tt.wantErrorMsg)
@@ -307,10 +299,7 @@ func TestBananaHandlerGetByID(t *testing.T) {
 			}
 
 			resp, err := h.Handle(context.Background(), req)
-			if err != nil {
-				t.Fatalf("handle: %v", err)
-			}
-			envelope := testutil.RequireStatusAndEnvelope(t, resp, tt.wantStatus)
+			envelope := testutil.RequireHandle(t, resp, err, tt.wantStatus)
 
 			if tt.wantErrorMsg != "" {
 				testutil.AssertAPIError(t, envelope, tt.wantErrorMsg)
@@ -381,7 +370,7 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 		{
 			name:         "POST rating below min",
 			method:       "POST",
-			body:         validationBodies.bananaWithRatingBelowMin,
+			body:         validationBodies.bananaWithValueBelowMin,
 			wantStatus:   http.StatusBadRequest,
 			wantErrorMsg: domain.ErrValidationFailed.Error(),
 			setupRepo:    panicBananaRepo,
@@ -389,7 +378,7 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 		{
 			name:         "POST rating above max",
 			method:       "POST",
-			body:         validationBodies.bananaWithRatingAboveMax,
+			body:         validationBodies.bananaWithValueAboveMax,
 			wantStatus:   http.StatusBadRequest,
 			wantErrorMsg: domain.ErrValidationFailed.Error(),
 			setupRepo:    panicBananaRepo,
@@ -413,11 +402,7 @@ func TestBananaHandlerClientErrors(t *testing.T) {
 			}
 
 			resp, err := h.Handle(context.Background(), req)
-			if err != nil {
-				t.Fatalf("handle: %v", err)
-			}
-
-			testutil.AssertAPIError(t, testutil.RequireStatusAndEnvelope(t, resp, tt.wantStatus), tt.wantErrorMsg)
+			testutil.AssertAPIError(t, testutil.RequireHandle(t, resp, err, tt.wantStatus), tt.wantErrorMsg)
 		})
 	}
 }
@@ -470,11 +455,7 @@ func TestBananaHandlerList(t *testing.T) {
 			resp, err := h.Handle(context.Background(), events.APIGatewayProxyRequest{
 				HTTPMethod: http.MethodGet,
 			})
-			if err != nil {
-				t.Fatalf("handle: %v", err)
-			}
-
-			envelope := testutil.RequireStatusAndEnvelope(t, resp, tt.wantStatus)
+			envelope := testutil.RequireHandle(t, resp, err, tt.wantStatus)
 
 			if tt.wantErrorMsg != "" {
 				testutil.AssertAPIError(t, envelope, tt.wantErrorMsg)
@@ -607,7 +588,7 @@ func TestBananaHandlerUpdate(t *testing.T) {
 		{
 			name:         "PUT rating below min",
 			pathID:       validUuid,
-			body:         validationBodies.bananaWithRatingBelowMin,
+			body:         validationBodies.bananaWithValueBelowMin,
 			wantStatus:   http.StatusBadRequest,
 			wantBanana:   nil,
 			wantErrorMsg: domain.ErrValidationFailed.Error(),
@@ -616,7 +597,7 @@ func TestBananaHandlerUpdate(t *testing.T) {
 		{
 			name:         "PUT rating above max",
 			pathID:       validUuid,
-			body:         validationBodies.bananaWithRatingAboveMax,
+			body:         validationBodies.bananaWithValueAboveMax,
 			wantStatus:   http.StatusBadRequest,
 			wantBanana:   nil,
 			wantErrorMsg: domain.ErrValidationFailed.Error(),
@@ -640,11 +621,7 @@ func TestBananaHandlerUpdate(t *testing.T) {
 			}
 
 			resp, err := h.Handle(context.Background(), req)
-			if err != nil {
-				t.Fatalf("handle: %v", err)
-			}
-
-			envelope := testutil.RequireStatusAndEnvelope(t, resp, tt.wantStatus)
+			envelope := testutil.RequireHandle(t, resp, err, tt.wantStatus)
 
 			if tt.wantErrorMsg != "" {
 				testutil.AssertAPIError(t, envelope, tt.wantErrorMsg)

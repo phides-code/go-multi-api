@@ -10,38 +10,41 @@ import (
 	"github.com/phides-code/go-multi-api/internal/testutil"
 )
 
+// bananaValidationBodies holds invalid request JSON for client-error tests.
+// Field names are intentional: they describe the invalidation shape, not which
+// entity field was mutated (so find-replace and new fields stay simple).
 type bananaValidationBodies struct {
-	bananaWithEmptyValue      string
-	bananaWithWhitespace      string
-	bananaWithValueTooLong    string
-	bananaWithRatingBelowMin  string
-	bananaWithRatingAboveMax  string
+	bananaWithEmptyValue    string
+	bananaWithWhitespace    string
+	bananaWithValueTooLong  string
+	bananaWithValueBelowMin string
+	bananaWithValueAboveMax string
 }
 
 func newBananaValidationBodies(t *testing.T) bananaValidationBodies {
 	t.Helper()
 
-	bananaWithEmptyValue := testutil.ValidBananaBody()
-	bananaWithEmptyValue.Descriptor = ""
+	emptyValue := testutil.ValidBananaBody()
+	emptyValue.Descriptor = ""
 
-	bananaWithWhitespace := testutil.ValidBananaBody()
-	bananaWithWhitespace.Descriptor = "   "
+	whitespace := testutil.ValidBananaBody()
+	whitespace.Descriptor = "   "
 
-	bananaWithValueTooLong := testutil.ValidBananaBody()
-	bananaWithValueTooLong.Descriptor = strings.Repeat("a", domain.DefaultMaxStringLength+1)
+	valueTooLong := testutil.ValidBananaBody()
+	valueTooLong.Descriptor = strings.Repeat("a", domain.DefaultMaxStringLength+1)
 
-	bananaWithRatingBelowMin := testutil.ValidBananaBody()
-	bananaWithRatingBelowMin.Rating = domain.DefaultMinInt - 1
+	valueBelowMin := testutil.ValidBananaBody()
+	valueBelowMin.Rating = domain.DefaultMinInt - 1
 
-	bananaWithRatingAboveMax := testutil.ValidBananaBody()
-	bananaWithRatingAboveMax.Rating = domain.DefaultMaxInt + 1
+	valueAboveMax := testutil.ValidBananaBody()
+	valueAboveMax.Rating = domain.DefaultMaxInt + 1
 
 	return bananaValidationBodies{
-		bananaWithEmptyValue:     bananaWithEmptyValue.JSON(t),
-		bananaWithWhitespace:     bananaWithWhitespace.JSON(t),
-		bananaWithValueTooLong:   bananaWithValueTooLong.JSON(t),
-		bananaWithRatingBelowMin: bananaWithRatingBelowMin.JSON(t),
-		bananaWithRatingAboveMax: bananaWithRatingAboveMax.JSON(t),
+		bananaWithEmptyValue:    emptyValue.JSON(t),
+		bananaWithWhitespace:    whitespace.JSON(t),
+		bananaWithValueTooLong:  valueTooLong.JSON(t),
+		bananaWithValueBelowMin: valueBelowMin.JSON(t),
+		bananaWithValueAboveMax: valueAboveMax.JSON(t),
 	}
 }
 

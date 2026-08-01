@@ -43,9 +43,10 @@ Copy `internal/banana/` → `internal/<resource>/` and rename. One package per r
 | `internal/domain/` | Cross-cutting only: `errors.go`, `id.go`, `validation.go` |
 | `internal/gateway/gateway.go` | Auth gate + path routing; `Register(prefix, ResourceHandler)` |
 | `internal/platform/` | Response envelope, error mapping, logging, auth (`CFTTokenHeader`, `CFTTokenEnvVar`, `ExpectedCFTToken`) |
-| `internal/testutil/consts.go` | `TestCFTToken` value for gateway and composition tests (pair with `platform.CFTTokenEnvVar` in `t.Setenv`) |
+| `internal/testutil/consts.go` | `TestCFTToken`, `CFTokenHeaders` (pair token with `platform.CFTTokenEnvVar` in `t.Setenv`) |
 | `internal/app/banana_stub_test.go` | Pattern for composition no-op repos (stay in `app`, not the resource package — see below) |
-| `internal/testutil/handler_assert.go` | `RequireStatusAndEnvelope`, `AssertAPIError` |
+| `internal/testutil/handler_assert.go` | `RequireHandle`, `RequireStatusAndEnvelope`, `AssertAPIError` |
+| `internal/testutil/error_assert.go` | `AssertWantErr` for table-driven validation tests |
 | `internal/testutil/dynamodb_assert.go` | `AssertUpdateSets` for update success mocks |
 
 ## Files to edit
@@ -85,14 +86,14 @@ Shared `domain/` and `platform/` stay resource-neutral.
 ## Test patterns (copy from banana)
 
 - Package: production code in `package <resource>`; tests in `package <resource>_test`.
-- Handler tests: `testutil.RequireStatusAndEnvelope`, `testutil.AssertAPIError`; mock repo in `mocks_test.go`. Shared request payloads: `testutil.<Resource>Body` / `Valid<Resource>Body()` / `.JSON(t)` (independent of the entity so tag regressions fail). Reuse package-local `new<Resource>ValidationBodies(t)` for empty/whitespace/too-long samples across POST and PUT.
+- Handler tests: prefer `testutil.RequireHandle` (err + status + envelope); `testutil.AssertAPIError` for client errors; mock repo in `mocks_test.go`. Shared request payloads: `testutil.<Resource>Body` / `Valid<Resource>Body()` / `.JSON(t)` (independent of the entity so tag regressions fail). Reuse package-local `new<Resource>ValidationBodies(t)` for generic invalid shapes (`…EmptyValue`, `…Whitespace`, `…ValueTooLong`, `…ValueBelowMin`, `…ValueAboveMax`) across POST and PUT — names describe the invalidation, not which field was mutated.
 - Entity fixtures: `testutil.<Resource>WithID(Valid<Resource>Body(), createdOn)` — client fields via named body struct, not positional args.
 - DynamoDB tests: `setupMock func(t *testing.T) *mockDynamoClient`; `storedBananaFixture(t)` for Get/Delete; `assertBananaRepoResult`, `assertBananaPutItem` in `assert_test.go`; `testutil.AssertUpdateSets` on update success.
 - Composition smoke: `testGateway` + `assertWiringSmokeGET` in `app_test.go`; one `*_stub_test.go` per resource under `internal/app/`.
-- Gateway integration: `router_test.go` in the resource package registers with `gateway.NewGatewayWithCFTToken`.
-- Validation tests: define `validCreateInput` / `validUpdateInput` as local funcs inside each test; clone and tweak one field per case. Prefer `testutil` canonical values over package-local literals.
+- Gateway integration: `router_test.go` in the resource package registers with `gateway.NewGatewayWithCFTToken`; use `testutil.CFTokenHeaders` and `platform.SAMLocalEnvVar` when needed.
+- Validation tests: define `validCreateInput` / `validUpdateInput` as local funcs inside each test; clone and tweak one field per case. Prefer `testutil.AssertWantErr` and `testutil` canonical values over package-local literals.
 - Validation bounds: use `domain.DefaultMinStringLength` / `DefaultMaxStringLength` unless the field opts out.
-- Avoid naming a function parameter `banana` when the package is `banana` — use `b` instead (shadowing breaks `banana.Banana{}` zero values).
+- In production package `banana`, prefer the parameter/local name `banana` so find-replace of the template resource name rewrites it. In `package banana_test`, use a short local (e.g. `b`) so you do not shadow the imported `banana` package.
 
 ## Before PR
 

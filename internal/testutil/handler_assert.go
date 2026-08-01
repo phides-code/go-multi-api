@@ -9,6 +9,7 @@ import (
 	"github.com/phides-code/go-multi-api/internal/platform"
 )
 
+// RequireStatusAndEnvelope fails unless status matches, then returns the parsed envelope.
 func RequireStatusAndEnvelope(t *testing.T, resp events.APIGatewayProxyResponse, wantStatus int) platform.APIResponse {
 	t.Helper()
 	if resp.StatusCode != wantStatus {
@@ -30,6 +31,7 @@ func RequireHandle(t *testing.T, resp events.APIGatewayProxyResponse, err error,
 	return RequireStatusAndEnvelope(t, resp, wantStatus)
 }
 
+// AssertAPIError fails unless data is nil and error equals wantMsg.
 func AssertAPIError(t *testing.T, envelope platform.APIResponse, wantMsg string) {
 	t.Helper()
 	if envelope.Data != nil {

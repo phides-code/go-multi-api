@@ -142,5 +142,5 @@ func (h *Handler) errorResponse(ctx context.Context, err error, operation string
 		h.logger.LogError(ctx, operation+" failed", err)
 	}
 
-	return platform.ErrorResponse(platform.HTTPStatusForError(err), platform.ClientErrorMessage(err))
+	return platform.ClientErrorResponse(err)
 }

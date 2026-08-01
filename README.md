@@ -22,7 +22,7 @@ internal/
   app/app.go                composition root: shared DynamoDB client, repos, Register
   app/banana_stub_test.go   no-op banana.Repository for composition smoke tests
   app/app_test.go           testGateway + assertWiringSmokeGET
-  testutil/                 shared test helpers (TestCFTToken, envelope/dynamodb asserts, fixtures)
+  testutil/                 shared test helpers (TestCFTToken, CFTokenHeaders, RequireHandle, AssertWantErr, fixtures)
 template.yml                SAM: API Gateway, Lambda, tables
 Makefile                    build, test, local, deploy
 ```
@@ -33,7 +33,7 @@ Copy `internal/banana/` for new resources. Reuse `domain.ValidateRequiredString`
 
 ### Authentication
 
-Every request except `OPTIONS` requires `X-CF-Token: <token>` (header `platform.CFTTokenHeader`). Deploy param `AwsCfToken` maps to env `AWS_CF_TOKEN` (`platform.CFTTokenEnvVar`). `make local` sets `AWS_SAM_LOCAL=true` and skips the check.
+Every request except `OPTIONS` requires `X-CF-Token: <token>` (header `platform.CFTTokenHeader`). Deploy param `AwsCfToken` maps to env `AWS_CF_TOKEN` (`platform.CFTTokenEnvVar`). Under `sam local` (`platform.SAMLocalEnvVar` = `true`/`1`), the token check is skipped.
 
 ### Response envelope
 
@@ -50,10 +50,10 @@ Success: `data` set, `error` null. Failure: opposite.
 | 400  | `invalid json`          | `ErrInvalidJSON`      | Bad body             |
 | 400  | `invalid id`            | `ErrInvalidID`        | Path `{id}` not UUID |
 | 400  | `validation failed`     | `ErrValidationFailed` | Domain rule failed   |
-| 404  | `not found`             | `ErrNotFound`         | Missing item         |
-| 409  | `already exists`        | `ErrAlreadyExists`    | Duplicate create     |
-| 405  | `method not allowed`    | `ErrMethodNotAllowed` | Unsupported method   |
 | 401  | `unauthorized`          | `ErrUnauthorized`     | Bad/missing token    |
+| 404  | `not found`             | `ErrNotFound`         | Missing item         |
+| 405  | `method not allowed`    | `ErrMethodNotAllowed` | Unsupported method   |
+| 409  | `already exists`        | `ErrAlreadyExists`    | Duplicate create     |
 | 500  | `internal server error` | —                     | Unexpected failure   |
 
 Return `ErrValidationFailed` from validation; no per-field error strings unless you extend platform mapping and this table. Client-facing text comes from each sentinel's `Error()` in `domain/errors.go` via `platform.ClientErrorMessage`. New cross-cutting errors: add sentinel in `domain/errors.go`, add a row to `clientErrorMappings` in `platform/errors.go`, document here.
@@ -92,7 +92,7 @@ Return `ErrValidationFailed` from validation; no per-field error strings unless 
 Go 1.23+, [AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html).
 
 ```bash
-make test      # unit tests + coverage gate (69% total, 85% gateway, 85% banana)
+make test      # unit tests + coverage gate (69% total excl. testutil, 85% gateway, 85% banana)
 make build
 make local     # API on :8000 (Docker); no auth header needed
 ```
@@ -105,7 +105,7 @@ curl http://localhost:8000/bananas
 
 ## Adding a field
 
-Extend an existing resource (e.g. add `description` to `Banana`). **TDD:** failing test → minimum code → green. Validation first, HTTP second, persistence last — all within `internal/<resource>/`.
+Extend an existing resource (e.g. add `origin` to `Banana`). **TDD:** failing test → minimum code → green. Validation first, HTTP second, persistence last — all within `internal/<resource>/`.
 
 | Step | What                                                                                                                                                                                                                                                                                        | Files                                                                                                                |
 | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |

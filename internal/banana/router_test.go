@@ -15,10 +15,6 @@ import (
 	"github.com/phides-code/go-multi-api/internal/testutil"
 )
 
-func cfTokenHeaders(token string) map[string]string {
-	return map[string]string{platform.CFTTokenHeader: token}
-}
-
 func registeredBananaGateway(repo banana.Repository) *gateway.Gateway {
 	g := gateway.NewGatewayWithCFTToken(platform.NewLogger(), testutil.TestCFTToken)
 	g.Register(banana.PathPrefix, banana.NewHandler(repo, platform.NewLogger()))
@@ -35,13 +31,13 @@ func TestGatewayRoutesBananas(t *testing.T) {
 		HTTPMethod:     http.MethodGet,
 		Path:           "/" + banana.PathPrefix + "/" + id,
 		PathParameters: map[string]string{"id": id},
-		Headers:        cfTokenHeaders(testutil.TestCFTToken),
+		Headers:        testutil.CFTokenHeaders(testutil.TestCFTToken),
 	})
 	testutil.RequireHandle(t, resp, err, http.StatusOK)
 }
 
 func TestGatewaySkipsCFTTokenUnderSAMLocal(t *testing.T) {
-	t.Setenv("AWS_SAM_LOCAL", "true")
+	t.Setenv(platform.SAMLocalEnvVar, "true")
 
 	id := uuid.NewString()
 	g := registeredBananaGateway(dispatchBananaRepo())

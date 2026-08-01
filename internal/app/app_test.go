@@ -29,7 +29,7 @@ func assertWiringSmokeGET(t *testing.T, g *gateway.Gateway, path string) {
 	resp, err := g.Handle(context.Background(), events.APIGatewayProxyRequest{
 		HTTPMethod: http.MethodGet,
 		Path:       path,
-		Headers:    map[string]string{platform.CFTTokenHeader: testutil.TestCFTToken},
+		Headers:    testutil.CFTokenHeaders(testutil.TestCFTToken),
 	})
 	if err != nil {
 		t.Fatalf("handle: %v", err)

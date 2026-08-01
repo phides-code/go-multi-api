@@ -22,7 +22,7 @@ func TestLocalMode(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Setenv("AWS_SAM_LOCAL", tc.value)
+			t.Setenv(platform.SAMLocalEnvVar, tc.value)
 			if got := platform.LocalMode(); got != tc.want {
 				t.Fatalf("LocalMode() = %v, want %v", got, tc.want)
 			}
