@@ -21,13 +21,13 @@ func TestBananaHandlerCreate(t *testing.T) {
 	validCreateBody := testutil.ValidBananaBody().JSON(t)
 
 	tests := []struct {
-		name         string
-		body         string
-		setupRepo    func() *mockBananaRepository
-		wantStatus   int
-		wantErrorMsg string
-		wantDescriptor    string
-		wantRating   int
+		name           string
+		body           string
+		setupRepo      func() *mockBananaRepository
+		wantStatus     int
+		wantErrorMsg   string
+		wantDescriptor string
+		wantRating     int
 	}{
 		{
 			name: "success",
@@ -39,9 +39,9 @@ func TestBananaHandlerCreate(t *testing.T) {
 					},
 				}
 			},
-			wantStatus: http.StatusCreated,
-			wantDescriptor:  testutil.TestBananaDescriptor,
-			wantRating: testutil.TestBananaRating,
+			wantStatus:     http.StatusCreated,
+			wantDescriptor: testutil.TestBananaDescriptor,
+			wantRating:     testutil.TestBananaRating,
 		},
 		{
 			name: "repo failure",
