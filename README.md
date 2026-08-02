@@ -114,29 +114,26 @@ curl http://localhost:8000/bananas
 
 ## Adding a field
 
-Example: add `origin` to banana. Stay inside `internal/<resource>/` (plus shared fixtures / README). Prefer TDD: failing test → smallest fix → green.
+Example: add `origin` to banana. Prefer TDD: failing test → smallest fix → green. Paths below use banana; substitute `<resource>` for another package.
 
-1. **Validation test** — In `<resource>_test.go`, extend the local `validCreateInput` / `validUpdateInput` helpers and add a case that blanks (or otherwise breaks) the new field.
-2. **Entity + validation** — Add the field to the entity (`json` + `dynamodbav` tags). If clients set it, add it to create/update inputs and validate with `domain.ValidateRequiredString` / `ValidateRequiredInt` (or a custom rule). Server-owned fields are set in the handler, not in inputs.
-3. **Fixtures** — Extend `testutil.<Resource>Body` / `Valid<Resource>Body`, package validation bodies, and wire-key asserts (`assert<Resource>DataKeys` uses `Attr*` constants).
-4. **Handler tests** — Client-error rows for bad values; success paths that assert the new field when it appears in the response.
-5. **Handler** — Parse, validate, pass through to the repository.
-6. **DynamoDB** — If the field is updatable, extend the Update `SET` expression (keep attribute names alphabetical) and the update test’s `AssertUpdateSets` map. Create usually needs no expression change (full `PutItem`).
-7. **Docs** — Update the resource section in this README.
+| Step | File(s) | Do this |
+| --- | --- | --- |
+| 1 | `internal/banana/banana_test.go` | Extend local `validCreateInput` / `validUpdateInput`. Add a case that blanks (or otherwise breaks) the new field. |
+| 2 | `internal/banana/banana.go` | Add the field on `Banana` with `json` + `dynamodbav` tags. If clients set it, add it to `CreateInput` / `UpdateInput` and validate (`domain.ValidateRequiredString` / `ValidateRequiredInt`, or custom). Server-owned fields are **not** on inputs — set them in the handler. |
+| 3 | `internal/testutil/banana_fixtures.go` | Add the field to `BananaBody`, `ValidBananaBody`, `BananaWithID`, and list fixtures if needed. |
+| 4 | `internal/banana/fixtures_test.go` | If the field is required on create/update, extend `newBananaValidationBodies` only when you need a new *shape*; reuse existing empty/whitespace/too-long fixtures when the rule matches descriptor. |
+| 5 | `internal/banana/dynamodb.go` | Add `Attr…` constant. If PUT-updatable, add it to the Update `SET` / names / values maps (keep attribute names alphabetical). |
+| 6 | `internal/banana/assert_test.go` | Add `Attr…` to the expected key list in `assertBananaDataKeys` (alphabetical). |
+| 7 | `internal/banana/handler_test.go` | Success create/update: assert the new field when it appears in the response. Client-error rows if validation can fail on this field. |
+| 8 | `internal/banana/handler.go` | Add the field to `writePayload`; copy into create/update inputs and the entity passed to the repo. |
+| 9 | `internal/banana/dynamodb_test.go` | If PUT-updatable: include the attr in the update success `AssertUpdateSets` map. Create/Get usually pick the field up via fixtures automatically. |
+| 10 | `internal/banana/mocks_test.go` | Only if a hand-built `Banana{…}` omits the new field and a test compares full structs. |
+| 11 | `README.md` | Update the bananas item shape, create/update bodies, validation, and PUT behavior row. |
 
-Skip steps 6 for read-only or create-only fields. Run `make test` before opening a PR.
+Skip DynamoDB Update changes (steps 5 and 9) for read-only or create-only fields. Run `make test` before opening a PR.
 
 ## Adding a new resource
 
-Copy `internal/banana/` and follow the checklist: **[docs/new-resource.md](docs/new-resource.md)**.
+Copy `internal/banana/` and follow the file-by-file checklist in **[docs/new-resource.md](docs/new-resource.md)**.
 
-Short version:
-
-1. Copy the package; rename symbols (`PathPrefix`, `TableName`, types, tests).
-2. Implement only the HTTP methods you need (handler **and** matching `template.yml` events).
-3. Wire `NewRepository` + `Register` in `app.Build` (reuse the shared DynamoDB client).
-4. Add `internal/app/<resource>_stub_test.go` and a smoke path in `app_test.go`.
-5. Add the SAM table, one `DynamoDBCrudPolicy` per table, and API events.
-6. Document the resource in this README.
-
-Use `domain.ErrValidationFailed` unless you are introducing a new cross-cutting sentinel (see the errors table above).
+Use `domain.ErrValidationFailed` unless you add a new cross-cutting sentinel (see the errors table above). Do not put resource routes in `gateway_test.go` — keep those in the resource’s `router_test.go`.

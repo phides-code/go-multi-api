@@ -10,71 +10,107 @@ Replace placeholders consistently:
 | `<Resource>` | `Apple` (exported types) |
 | `<resources>` | `apples` (`PathPrefix`, plural path) |
 
-Walkthrough summary: [README — Adding a new resource](../README.md#adding-a-new-resource).
+Summary table: [README — Adding a new resource](../README.md#adding-a-new-resource).
 
-## 1. Copy the slice
+## Steps (file by file)
 
-```bash
-cp -R internal/banana internal/<resource>
-```
+Work one HTTP method at a time when possible (e.g. `GET /apples` → empty list), then expand.
 
-Rename files and symbols (`banana` → `<resource>`, `Banana` → `<Resource>`, `bananas` → `<resources>`). Prefer the local/parameter name `<resource>` in production code so find-replace stays mechanical. In `package <resource>_test`, use a short local (e.g. `a`) so you do not shadow the imported package.
+### 1. Copy and rename
 
-## 2. TDD order
-
-Work one vertical slice at a time (e.g. `GET /apples` → empty list), then expand method by method.
-
-1. Failing handler test with a mock repo
-2. Router integration test (`router_test.go` registers `PathPrefix`)
-3. Entity + validation tests
-4. Handler implementation for that method
-5. DynamoDB tests, then `dynamodb.go`
-6. Composition + SAM + README
-7. `make test` (and `make build` after template changes)
-
-## 3. Files in the vertical slice
-
-| File | Role (see banana equivalent) |
+| File(s) | Do this |
 | --- | --- |
-| `<resource>.go` | `PathPrefix`, `TableName`, entity, create/update inputs, validation |
-| `repository.go` | `Repository` interface |
-| `handler.go` | HTTP → repo; `NewHandler(repo, logger)` |
-| `dynamodb.go` | DynamoDB `Repository` (`Attr*`, conditions, CRUD) |
-| `<resource>_test.go` | Validation unit tests |
-| `handler_test.go` | HTTP tests (`package <resource>_test`) |
-| `dynamodb_test.go` | Repository tests with mocked DynamoDB client |
-| `assert_test.go` | Wire decode, put/update/repo result asserts |
-| `fixtures_test.go` | Handler fixtures (existing item, validation bodies) |
-| `dynamodb_fixtures_test.go` | Stored item + marshaled DynamoDB map |
-| `mocks_test.go` | Mock `Repository` helpers |
-| `router_test.go` | Gateway + resource integration |
-| `internal/testutil/<resource>_fixtures.go` | Shared fixtures if handler and DynamoDB tests both need them |
+| `internal/banana/` → `internal/<resource>/` | `cp -R internal/banana internal/<resource>` |
+| Every file under `internal/<resource>/` | Rename files and symbols: `banana`→`<resource>`, `Banana`→`<Resource>`, `bananas`→`<resources>` |
+| `internal/<resource>/<resource>.go` | Set `PathPrefix` (plural, no slash) and `TableName` (must match SAM physical name) |
 
-## 4. Wire into the app
+In production code, prefer the local/parameter name `<resource>` so find-replace stays mechanical. In `package <resource>_test`, use a short local (e.g. `a`) so you do not shadow the imported package.
 
-- [ ] `internal/app/app.go` — reuse shared `dynamodb.NewFromConfig(cfg)`; `<resource>.NewRepository(client)`; `g.Register(<resource>.PathPrefix, <resource>.NewHandler(...))`
-- [ ] `internal/app/<resource>_stub_test.go` — no-op `Repository` (mirror `banana_stub_test.go`; must live under `app`, not the resource package)
-- [ ] `internal/app/app_test.go` — extend `testGateway` with the stub; add `assertWiringSmokeGET(..., "/"+<resource>.PathPrefix)`
-- [ ] `template.yml` — table, **one `DynamoDBCrudPolicy` per table**, API events for each method you support
-- [ ] `README.md` — endpoints, item shape, create/update bodies, validation
-- [ ] `Makefile` — optional per-package coverage gate if you want the same bar as banana
+### 2. First failing tests
 
-Do **not** add resource-specific cases to `gateway_test.go`. Gateway tests stay generic; resource routing belongs in `router_test.go`.
+| File(s) | Do this |
+| --- | --- |
+| `internal/<resource>/handler_test.go` | One failing test for the first method (mock repo) |
+| `internal/<resource>/mocks_test.go` | Mock `Repository` helpers for that method |
+| `internal/<resource>/router_test.go` | `Register(<resource>.PathPrefix, …)` and assert gateway dispatch |
 
-## 5. Naming (must match across Go and SAM)
+### 3. Entity and validation
+
+| File(s) | Do this |
+| --- | --- |
+| `internal/<resource>/<resource>_test.go` | Validation cases (`validCreateInput` / `validUpdateInput` locals) |
+| `internal/<resource>/<resource>.go` | Entity, `CreateInput` / `UpdateInput`, validation funcs |
+| `internal/<resource>/repository.go` | Keep / trim `Repository` methods to what you implement |
+
+### 4. Handler
+
+| File(s) | Do this |
+| --- | --- |
+| `internal/<resource>/handler.go` | Implement only the HTTP methods you need |
+| `internal/<resource>/handler_test.go` | Success, client errors, one 500 per op as you add methods |
+| `internal/<resource>/fixtures_test.go` | `existing<Resource>Fixture`, `new<Resource>ValidationBodies` |
+| `internal/<resource>/assert_test.go` | Wire decode helpers + `assert<Resource>DataKeys` |
+
+### 5. DynamoDB
+
+| File(s) | Do this |
+| --- | --- |
+| `internal/<resource>/dynamodb_test.go` | Table-driven repo tests with mocked client |
+| `internal/<resource>/dynamodb_fixtures_test.go` | `stored<Resource>Fixture(t)` (entity + marshaled item) |
+| `internal/<resource>/assert_test.go` | `assert<Resource>PutItem`, `assert<Resource>RepoResult` |
+| `internal/<resource>/dynamodb.go` | `Attr*`, conditions, CRUD impl (`NewRepository`) |
+| `internal/testutil/<resource>_fixtures.go` | Shared body/entity fixtures (mirror `banana_fixtures.go`) when handler and DynamoDB tests both need them |
+
+### 6. Compose and deploy config
+
+| File(s) | Do this |
+| --- | --- |
+| `internal/app/app.go` | Reuse shared `dynamodb.NewFromConfig(cfg)`; `<resource>.NewRepository(client)`; `g.Register(PathPrefix, NewHandler(...))` |
+| `internal/app/<resource>_stub_test.go` | No-op `Repository` (mirror `banana_stub_test.go`; must live under `app`, not the resource package) |
+| `internal/app/app_test.go` | Extend `testGateway` with the stub; add `assertWiringSmokeGET(..., "/"+PathPrefix)` |
+| `template.yml` | Table, **one `DynamoDBCrudPolicy` per table**, API events only for methods you implemented |
+| `README.md` | Endpoints, item shape, create/update bodies, validation |
+| `Makefile` | Optional per-package coverage gate (same pattern as banana) |
+
+Do **not** add resource-specific cases to `internal/gateway/gateway_test.go`. Gateway tests stay generic; resource routing belongs in `router_test.go`.
+
+### 7. Before PR
+
+- [ ] `make test`
+- [ ] `make build` (required after `template.yml` changes)
+- [ ] README documents the new resource
+- [ ] Only the HTTP methods you implemented have matching SAM events
+
+## Naming (must match across Go and SAM)
 
 | Piece | Convention | Example |
 | --- | --- | --- |
 | SAM logical ID | `Appname<Resources>Table` | `AppnameApplesTable` |
 | Physical table name | `Appname<Resources>` | `AppnameApples` |
-| Go `TableName` | same physical name | `const TableName = "AppnameApples"` |
-| Go `PathPrefix` | plural, no leading slash | `const PathPrefix = "apples"` |
+| Go `TableName` in `<resource>.go` | same physical name | `const TableName = "AppnameApples"` |
+| Go `PathPrefix` in `<resource>.go` | plural, no leading slash | `const PathPrefix = "apples"` |
 
 SAM API event **logical IDs** should match the HTTP verb (see banana events in `template.yml`): e.g. `PostApple` + `POST`, `UpdateApple` + `PUT`. Avoid `PutApple` for a POST route.
 
-## 6. Reuse these packages
+## Vertical slice file map
 
-Do not copy domain/platform/gateway per resource.
+| File | Role |
+| --- | --- |
+| `<resource>.go` | `PathPrefix`, `TableName`, entity, inputs, validation |
+| `repository.go` | `Repository` interface |
+| `handler.go` | HTTP → repo; `NewHandler(repo, logger)` |
+| `dynamodb.go` | DynamoDB `Repository` |
+| `<resource>_test.go` | Validation unit tests |
+| `handler_test.go` | HTTP tests (`package <resource>_test`) |
+| `dynamodb_test.go` | Repository tests |
+| `assert_test.go` | Wire decode + put/repo asserts |
+| `fixtures_test.go` | Handler fixtures |
+| `dynamodb_fixtures_test.go` | Stored item + marshaled map |
+| `mocks_test.go` | Mock `Repository` helpers |
+| `router_test.go` | Gateway + resource integration |
+| `internal/testutil/<resource>_fixtures.go` | Cross-package fixtures |
+
+## Reuse (do not copy per resource)
 
 | Package | Use for |
 | --- | --- |
@@ -83,38 +119,31 @@ Do not copy domain/platform/gateway per resource.
 | `internal/platform` | Envelope, `ClientErrorResponse`, logger, CF token helpers |
 | `internal/testutil` | `RequireHandle`, `AssertAPIError`, `AssertWantErr`, `AssertUpdateSets`, `CFTokenHeaders` |
 
-## 7. Test patterns (copy from banana)
+## Test patterns (copy from banana)
 
 **Packages:** production code in `package <resource>`; tests in `package <resource>_test`.
 
-**Handler tests**
+**`handler_test.go`**
 
-- Prefer `testutil.RequireHandle` (err + status + envelope) and `testutil.AssertAPIError` for client errors.
-- Request JSON: `testutil.<Resource>Body` / `Valid<Resource>Body().JSON(t)` — declared separately from the entity so tag drift fails tests.
-- Invalid bodies: package-local `new<Resource>ValidationBodies(t)` with shape names (`EmptyValue`, `Whitespace`, `ValueTooLong`, `ValueBelowMin`, `ValueAboveMax`), not field names. Reuse the same fixtures for POST and PUT.
-- Entity for get/update/delete: `testutil.<Resource>WithID(Valid<Resource>Body(), createdOn)`.
+- Prefer `testutil.RequireHandle` and `testutil.AssertAPIError`.
+- Request JSON from `testutil.<Resource>Body` / `Valid<Resource>Body().JSON(t)` (separate from the entity so tag drift fails).
+- Invalid bodies from `fixtures_test.go` (`new<Resource>ValidationBodies`) with shape names (`EmptyValue`, `Whitespace`, …), not field names — reuse for POST and PUT.
+- Entities via `testutil.<Resource>WithID(...)`.
 
-**Validation tests**
+**`<resource>_test.go`**
 
-- Local `validCreateInput` / `validUpdateInput` helpers; clone and break one field per case.
-- Prefer `testutil.AssertWantErr` and shared canonical values over one-off literals.
-- Default string/int bounds come from `domain` unless the field opts out.
+- Local `validCreateInput` / `validUpdateInput`; clone and break one field per case.
+- Prefer `testutil.AssertWantErr` and shared canonical values.
+- Default bounds from `domain` unless the field opts out.
 
-**DynamoDB tests**
+**`dynamodb_test.go`**
 
 - `setupMock func(t *testing.T) *mockDynamoClient`
-- `stored<Resource>Fixture(t)` for Get/Delete/Update success (entity + marshaled item)
-- Create: `BananaWithID`-style fixture + `assert<Resource>PutItem`
-- Update success: `testutil.AssertUpdateSets` (keys are sorted alphabetically in the expected `SET`)
+- `stored<Resource>Fixture` from `dynamodb_fixtures_test.go` for Get/Delete/Update success
+- Create: shared fixture + `assert<Resource>PutItem` in `assert_test.go`
+- Update success: `testutil.AssertUpdateSets` (expected `SET` attrs sorted alphabetically)
 
-**Composition / gateway**
+**`app_test.go` / `router_test.go`**
 
-- Smoke: `testGateway` + `assertWiringSmokeGET` in `app_test.go`
-- Integration: `router_test.go` uses `gateway.NewGatewayWithCFTToken` and `testutil.CFTokenHeaders`
-
-## 8. Before PR
-
-- [ ] `make test`
-- [ ] `make build` (required after `template.yml` changes)
-- [ ] README documents the new resource
-- [ ] Only the HTTP methods you implemented have matching SAM events
+- Smoke: `testGateway` + `assertWiringSmokeGET`
+- Integration: `gateway.NewGatewayWithCFTToken` + `testutil.CFTokenHeaders`
